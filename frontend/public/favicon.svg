@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#000666"/>
+  <!-- Leaf / eco icon approximation -->
+  <path d="M16 6 C16 6 8 10 8 18 C8 22.4 11.6 26 16 26 C20.4 26 24 22.4 24 18 C24 10 16 6 16 6Z" fill="#94f0df"/>
+  <line x1="16" y1="26" x2="16" y2="16" stroke="#000666" stroke-width="1.5"/>
+  <path d="M16 20 Q19 17 22 15" stroke="#000666" stroke-width="1" fill="none"/>
+</svg>

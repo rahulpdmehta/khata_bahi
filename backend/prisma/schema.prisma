@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SettlementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentMode {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CARD
+  CHEQUE
+  DUES
+  SPLIT
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Char(36)
+  username      String   @unique @db.VarChar(50)
+  email         String   @unique @db.VarChar(100)
+  passwordHash  String   @db.VarChar(255)
+  role          UserRole
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.DateTime(0)
+  updatedAt     DateTime @updatedAt @db.DateTime(0)
+
+  centers              UserCenter[]
+  transactions         Transaction[]
+  expenses             Expense[]           @relation("ExpenseCreatedBy")
+  expensesApproved     Expense[]           @relation("ExpenseApprovedBy")
+  editRequestsCreated  EditRequest[]       @relation("RequestedBy")
+  editRequestsReviewed EditRequest[]       @relation("ReviewedBy")
+  settlementsCreated   Settlement[]        @relation("CreatedBy")
+  settlementsApproved  Settlement[]        @relation("ApprovedBy")
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+model Center {
+  id            String   @id @default(uuid()) @db.Char(36)
+  centerCode    String   @unique @db.VarChar(20)
+  centerName    String   @db.VarChar(100)
+  address       String?  @db.Text
+  contactNumber String?  @db.VarChar(15)
+  email         String?  @db.VarChar(100)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.DateTime(0)
+  updatedAt     DateTime @updatedAt @db.DateTime(0)
+
+  users        UserCenter[]
+  transactions Transaction[]
+  expenses     Expense[]
+  settlements  Settlement[]
+
+  @@map("centers")
+}
+
+model UserCenter {
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String   @db.Char(36)
+  centerId   String   @db.Char(36)
+  assignedAt DateTime @default(now()) @db.DateTime(0)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, centerId])
+  @@index([userId])
+  @@index([centerId])
+  @@map("user_centers")
+}
+
+model IncomeSource {
+  id            String   @id @default(uuid()) @db.Char(36)
+  sourceName    String   @db.VarChar(100)
+  sourceCode    String   @unique @db.VarChar(20)
+  defaultAmount Decimal? @db.Decimal(10, 2)
+  isActive      Boolean  @default(true)
+
+  transactions Transaction[]
+
+  @@map("income_sources")
+}
+
+model VehicleType {
+  id         String  @id @default(uuid()) @db.Char(36)
+  typeName   String  @db.VarChar(50)
+  typeCode   String  @unique @db.VarChar(20)
+  baseCharge Decimal @db.Decimal(10, 2)
+  isActive   Boolean @default(true)
+
+  transactions Transaction[]
+
+  @@map("vehicle_types")
+}
+
+model ExpenseCategory {
+  id            String   @id @default(uuid()) @db.Char(36)
+  categoryName  String   @db.VarChar(100)
+  categoryCode  String   @unique @db.VarChar(20)
+  description   String?  @db.Text
+  approvalThreshold Decimal? @db.Decimal(10, 2)
+  isActive      Boolean  @default(true)
+
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+model Expense {
+  id                String        @id @default(uuid()) @db.Char(36)
+  expenseNumber     String        @unique @db.VarChar(50)
+  centerId          String        @db.Char(36)
+  userId            String        @db.Char(36)
+  categoryId        String        @db.Char(36)
+  amount            Decimal       @db.Decimal(10, 2)
+  paymentMode       PaymentMode
+  vendorName        String?       @db.VarChar(200)
+  description       String?       @db.Text
+  receiptUrl        String?       @db.VarChar(500)
+  expenseDate       DateTime      @db.Date
+  status            ExpenseStatus @default(PENDING)
+  approvedBy        String?       @db.Char(36)
+  approvedAt        DateTime?     @db.DateTime(0)
+  rejectionReason   String?       @db.Text
+  createdAt         DateTime      @default(now()) @db.DateTime(0)
+  updatedAt         DateTime      @updatedAt @db.DateTime(0)
+
+  center       Center        @relation(fields: [centerId], references: [id])
+  user         User          @relation("ExpenseCreatedBy", fields: [userId], references: [id])
+  category     ExpenseCategory @relation(fields: [categoryId], references: [id])
+  approver     User?         @relation("ExpenseApprovedBy", fields: [approvedBy], references: [id])
+  editRequests EditRequest[]
+
+  @@index([centerId, expenseDate])
+  @@index([userId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("expenses")
+}
+
+model Transaction {
+  id                String    @id @default(uuid()) @db.Char(36)
+  transactionNumber String    @unique @db.VarChar(50)
+  centerId          String    @db.Char(36)
+  userId            String    @db.Char(36)
+  vehicleTypeId     String?   @db.Char(36)
+  vehicleNumber     String?   @db.VarChar(20)
+  incomeSourceId    String    @db.Char(36)
+  amount            Decimal   @db.Decimal(10, 2)
+  transactionDate   DateTime  @db.Date
+  transactionTime   DateTime  @db.Time(0)
+  paymentMode       PaymentMode @default(CASH)
+  customerName      String?   @db.VarChar(100)
+  customerMobile    String?   @db.VarChar(15)
+  notes             String?   @db.Text
+  isLocked          Boolean   @default(true)
+  createdAt         DateTime  @default(now()) @db.DateTime(0)
+  createdBy         String?   @db.Char(36)
+  updatedAt         DateTime  @updatedAt @db.DateTime(0)
+  updatedBy         String?   @db.Char(36)
+
+  center       Center       @relation(fields: [centerId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  vehicleType  VehicleType? @relation(fields: [vehicleTypeId], references: [id])
+  incomeSource IncomeSource @relation(fields: [incomeSourceId], references: [id])
+  editRequests EditRequest[]
+  payments     TransactionPayment[]
+
+  @@index([centerId, transactionDate])
+  @@index([userId])
+  @@index([incomeSourceId])
+  @@map("transactions")
+}
+
+model TransactionPayment {
+  id            String      @id @default(uuid()) @db.Char(36)
+  transactionId String      @db.Char(36)
+  paymentMode   PaymentMode
+  amount        Decimal     @db.Decimal(10, 2)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("transaction_payments")
+}
+
+model EditRequest {
+  id              String        @id @default(uuid()) @db.Char(36)
+  transactionId   String?       @db.Char(36)
+  expenseId       String?       @db.Char(36)
+  settlementId    String?       @db.Char(36)
+  resourceType    String        @default("TRANSACTION") @db.VarChar(20)
+  requestedBy     String        @db.Char(36)
+  requestReason   String        @db.Text
+  originalData    Json
+  proposedChanges Json
+  status          RequestStatus @default(PENDING)
+  reviewedBy      String?       @db.Char(36)
+  reviewNotes     String?       @db.Text
+  requestedAt     DateTime      @default(now()) @db.DateTime(0)
+  reviewedAt      DateTime?     @db.DateTime(0)
+
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+  expense     Expense?     @relation(fields: [expenseId], references: [id])
+  settlement  Settlement?  @relation(fields: [settlementId], references: [id])
+  requester   User         @relation("RequestedBy", fields: [requestedBy], references: [id])
+  reviewer    User?        @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@index([status])
+  @@index([transactionId])
+  @@index([expenseId])
+  @@index([settlementId])
+  @@index([requestedBy])
+  @@map("edit_requests")
+}
+
+model Settlement {
+  id                  String           @id @default(uuid()) @db.Char(36)
+  settlementNumber    String           @unique @db.VarChar(50)
+  centerId            String           @db.Char(36)
+  userId              String           @db.Char(36)
+  settlementDate      DateTime         @db.Date
+  totalIncome         Decimal          @db.Decimal(10, 2)
+  totalExpenses       Decimal          @default(0) @db.Decimal(10, 2)
+  netAmount           Decimal          @db.Decimal(10, 2)
+  carryForwardAmount  Decimal          @default(0) @db.Decimal(10, 2)
+  finalAmount         Decimal          @db.Decimal(10, 2)
+  status              SettlementStatus @default(PENDING)
+  approvedBy          String?          @db.Char(36)
+  approvedAt          DateTime?        @db.DateTime(0)
+  notes               String?          @db.Text
+  createdAt           DateTime         @default(now()) @db.DateTime(0)
+
+  center       Center        @relation(fields: [centerId], references: [id])
+  user         User          @relation("CreatedBy", fields: [userId], references: [id])
+  approver     User?         @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  editRequests EditRequest[]
+
+  @@unique([centerId, settlementDate])
+  @@index([centerId, settlementDate])
+  @@index([status])
+  @@map("settlements")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String?  @db.Char(36)
+  action     String   @db.VarChar(50)
+  entityType String   @db.VarChar(50)
+  entityId   String?  @db.Char(36)
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?  @db.VarChar(45)
+  userAgent  String?  @db.Text
+  createdAt  DateTime @default(now()) @db.DateTime(0)
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, action, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

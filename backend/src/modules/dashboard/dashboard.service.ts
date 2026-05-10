@@ -1,0 +1,320 @@
+import { prisma } from '../../config/database';
+import { startOfDay, endOfDay, startOfMonth, startOfWeek } from 'date-fns';
+
+export class DashboardService {
+  async getOverview(_userId: string, centerId?: string) {
+    const today = new Date();
+    const where: Record<string, unknown> = {};
+
+    if (centerId) {
+      where.centerId = centerId;
+    }
+
+    const [todayIncome, todayExpenses, weekIncome, weekExpenses, monthIncome, monthExpenses] =
+      await Promise.all([
+        this.getIncome({
+          ...where,
+          transactionDate: {
+            gte: startOfDay(today),
+            lte: endOfDay(today),
+          },
+        }),
+        this.getExpenses({
+          ...where,
+          expenseDate: {
+            gte: startOfDay(today),
+            lte: endOfDay(today),
+          },
+          status: 'APPROVED',
+        }),
+        this.getIncome({
+          ...where,
+          transactionDate: {
+            gte: startOfWeek(today),
+            lte: endOfDay(today),
+          },
+        }),
+        this.getExpenses({
+          ...where,
+          expenseDate: {
+            gte: startOfWeek(today),
+            lte: endOfDay(today),
+          },
+          status: 'APPROVED',
+        }),
+        this.getIncome({
+          ...where,
+          transactionDate: {
+            gte: startOfMonth(today),
+            lte: endOfDay(today),
+          },
+        }),
+        this.getExpenses({
+          ...where,
+          expenseDate: {
+            gte: startOfMonth(today),
+            lte: endOfDay(today),
+          },
+          status: 'APPROVED',
+        }),
+      ]);
+
+    return {
+      today: {
+        income: todayIncome,
+        expenses: todayExpenses,
+        profit: todayIncome - todayExpenses,
+      },
+      week: {
+        income: weekIncome,
+        expenses: weekExpenses,
+        profit: weekIncome - weekExpenses,
+      },
+      month: {
+        income: monthIncome,
+        expenses: monthExpenses,
+        profit: monthIncome - monthExpenses,
+      },
+    };
+  }
+
+  async getIncomeVsExpenseTrend(startDate: Date, endDate: Date, centerId?: string) {
+    const txWhere: Record<string, unknown> = {
+      transactionDate: { gte: startDate, lte: endDate },
+    };
+    const expWhere: Record<string, unknown> = {
+      expenseDate: { gte: startDate, lte: endDate },
+      status: 'APPROVED',
+    };
+    if (centerId) {
+      txWhere.centerId = centerId;
+      expWhere.centerId = centerId;
+    }
+
+    const [transactions, expenses] = await Promise.all([
+      prisma.transaction.findMany({ where: txWhere, select: { transactionDate: true, amount: true } }),
+      prisma.expense.findMany({ where: expWhere, select: { expenseDate: true, amount: true } }),
+    ]);
+
+    const incomeByDate = this.groupByDate(
+      transactions.map((t) => ({ date: t.transactionDate, amount: Number(t.amount) }))
+    );
+    const expensesByDate = this.groupByDate(
+      expenses.map((e) => ({ date: e.expenseDate, amount: Number(e.amount) }))
+    );
+
+    return { income: incomeByDate, expenses: expensesByDate };
+  }
+
+  private groupByDate(records: { date: Date; amount: number }[]): { date: string; total: number }[] {
+    const map = new Map<string, number>();
+    for (const r of records) {
+      const key = r.date.toISOString().slice(0, 10);
+      map.set(key, (map.get(key) ?? 0) + r.amount);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => ({ date, total }));
+  }
+
+  async getCenterPerformance(startDate: Date, endDate: Date) {
+    const centers = await prisma.center.findMany({
+      where: { isActive: true },
+    });
+
+    const performance = await Promise.all(
+      centers.map(async (center) => {
+        const [income, expenses] = await Promise.all([
+          this.getIncome({
+            centerId: center.id,
+            transactionDate: {
+              gte: startDate,
+              lte: endDate,
+            },
+          }),
+          this.getExpenses({
+            centerId: center.id,
+            expenseDate: {
+              gte: startDate,
+              lte: endDate,
+            },
+            status: 'APPROVED',
+          }),
+        ]);
+
+        return {
+          center,
+          income,
+          expenses,
+          profit: income - expenses,
+        };
+      })
+    );
+
+    return performance;
+  }
+
+  async getExpenseBreakdown(startDate: Date, endDate: Date, centerId?: string) {
+    const where: Record<string, unknown> = {
+      expenseDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+      status: 'APPROVED',
+    };
+
+    if (centerId) {
+      where.centerId = centerId;
+    }
+
+    const result = await prisma.expense.groupBy({
+      by: ['categoryId'],
+      where,
+      _sum: {
+        amount: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const categories = await prisma.expenseCategory.findMany({
+      where: {
+        id: {
+          in: result.map((r) => r.categoryId),
+        },
+      },
+    });
+
+    return result.map((r) => ({
+      category: categories.find((c) => c.id === r.categoryId)!,
+      totalAmount: r._sum.amount || 0,
+      count: r._count.id,
+    }));
+  }
+
+  async getPaymentModeBreakdown(startDate: Date, endDate: Date, centerId?: string) {
+    const baseWhere: Record<string, unknown> = {
+      transactionDate: { gte: startDate, lte: endDate },
+    };
+    if (centerId) baseWhere.centerId = centerId;
+
+    // Non-split transactions: group directly by paymentMode
+    const normalResult = await prisma.transaction.groupBy({
+      by: ['paymentMode'],
+      where: { ...baseWhere, paymentMode: { not: 'SPLIT' } },
+      _sum: { amount: true },
+      _count: { id: true },
+    });
+
+    // Split transactions: aggregate from TransactionPayment rows
+    const splitPayments = await prisma.transactionPayment.findMany({
+      where: {
+        transaction: baseWhere,
+      },
+      select: { paymentMode: true, amount: true },
+    });
+
+    // Merge into a single map
+    const map = new Map<string, { totalAmount: number; count: number }>();
+
+    for (const r of normalResult) {
+      map.set(r.paymentMode, {
+        totalAmount: Number(r._sum.amount || 0),
+        count: r._count.id,
+      });
+    }
+
+    for (const sp of splitPayments) {
+      const key = sp.paymentMode;
+      const existing = map.get(key) ?? { totalAmount: 0, count: 0 };
+      map.set(key, {
+        totalAmount: existing.totalAmount + Number(sp.amount),
+        count: existing.count, // split payments share the parent txn count; don't double-count
+      });
+    }
+
+    return Array.from(map.entries()).map(([paymentMode, data]) => ({
+      paymentMode,
+      totalAmount: data.totalAmount,
+      count: data.count,
+    }));
+  }
+
+  async getSettlementDue(startDate: Date, endDate: Date, centerId?: string) {
+    const txWhere: Record<string, unknown> = {
+      transactionDate: { gte: startDate, lte: endDate },
+    };
+    if (centerId) txWhere.centerId = centerId;
+
+    // CASH from non-split transactions
+    const directCash = await prisma.transaction.aggregate({
+      where: { ...txWhere, paymentMode: 'CASH' },
+      _sum: { amount: true },
+    });
+
+    // CASH portions from SPLIT transactions
+    const splitCash = await prisma.transactionPayment.aggregate({
+      where: {
+        paymentMode: 'CASH',
+        transaction: txWhere,
+      },
+      _sum: { amount: true },
+    });
+
+    const cashIncome = Number(directCash._sum.amount || 0) + Number(splitCash._sum.amount || 0);
+
+    // Approved expenses in period
+    const expWhere: Record<string, unknown> = {
+      expenseDate: { gte: startDate, lte: endDate },
+      status: 'APPROVED',
+    };
+    if (centerId) expWhere.centerId = centerId;
+    const expenses = await prisma.expense.aggregate({
+      where: expWhere,
+      _sum: { amount: true },
+    });
+    const totalExpenses = Number(expenses._sum.amount || 0);
+
+    // Approved settlements in period
+    const setWhere: Record<string, unknown> = {
+      settlementDate: { gte: startDate, lte: endDate },
+      status: 'APPROVED',
+    };
+    if (centerId) setWhere.centerId = centerId;
+    const settled = await prisma.settlement.aggregate({
+      where: setWhere,
+      _sum: { finalAmount: true },
+    });
+    const totalSettled = Number(settled._sum.finalAmount || 0);
+
+    return {
+      cashIncome,
+      totalExpenses,
+      totalSettled,
+      settlementDue: Math.max(0, cashIncome - totalExpenses - totalSettled),
+    };
+  }
+
+  private async getIncome(where: Record<string, unknown>) {
+    const result = await prisma.transaction.aggregate({
+      where,
+      _sum: {
+        amount: true,
+      },
+    });
+
+    return Number(result._sum.amount || 0);
+  }
+
+  private async getExpenses(where: Record<string, unknown>) {
+    const result = await prisma.expense.aggregate({
+      where,
+      _sum: {
+        amount: true,
+      },
+    });
+
+    return Number(result._sum.amount || 0);
+  }
+}
