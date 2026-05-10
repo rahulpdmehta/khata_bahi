@@ -29,13 +29,17 @@ export class AuthService {
     const token = this.generateToken(user.id, user.role);
     const refreshToken = this.generateRefreshToken(user.id);
 
+    const centers = user.role === 'ADMIN'
+      ? await prisma.center.findMany({ where: { isActive: true }, orderBy: { centerName: 'asc' } })
+      : user.centers.map((uc) => uc.center);
+
     return {
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
-        centers: user.centers.map((uc) => uc.center),
+        centers,
       },
       token,
       refreshToken,
@@ -86,10 +90,11 @@ export class AuthService {
       throw ApiError.notFound('User not found');
     }
 
-    return {
-      ...user,
-      centers: user.centers.map((uc) => uc.center),
-    };
+    const centers = user.role === 'ADMIN'
+      ? await prisma.center.findMany({ where: { isActive: true }, orderBy: { centerName: 'asc' } })
+      : user.centers.map((uc) => uc.center);
+
+    return { ...user, centers };
   }
 
   private generateToken(userId: string, role: string) {
