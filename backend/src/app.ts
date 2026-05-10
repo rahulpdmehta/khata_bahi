@@ -17,6 +17,9 @@ import masterDataRoutes from './modules/masterData/masterData.routes';
 
 const app: Application = express();
 
+// Trust Vercel's proxy so X-Forwarded-For is handled correctly by rate limiter
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(
