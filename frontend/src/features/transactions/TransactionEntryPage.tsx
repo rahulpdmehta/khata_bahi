@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { createTransaction } from './transactionSlice';
 import { fetchIncomeSources, fetchVehicleTypes } from '../masterData/masterDataSlice';
+import { fetchCenters } from '../admin/centerSlice';
 
 const PAYMENT_MODES = [
   { value: 'CASH', label: 'Cash' },
@@ -59,8 +60,10 @@ export const TransactionEntryPage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const { incomeSources, vehicleTypes } = useAppSelector((state) => state.masterData);
   const { loading } = useAppSelector((state) => state.transactions);
+  const { centers: allCenters } = useAppSelector((state) => state.centers);
 
-  const defaultCenterId = user?.centers?.[0]?.id || '';
+  const availableCenters = allCenters.length > 0 ? allCenters : (user?.centers || []);
+  const defaultCenterId = availableCenters[0]?.id || '';
   const [form, setForm] = useState(emptyForm(defaultCenterId));
   // splitEntries: one entry per selected payment mode
   const [splitEntries, setSplitEntries] = useState<SplitEntry[]>([{ paymentMode: 'CASH', amount: '' }]);
@@ -75,7 +78,14 @@ export const TransactionEntryPage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchIncomeSources());
     dispatch(fetchVehicleTypes());
+    dispatch(fetchCenters());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (availableCenters.length > 0 && !form.centerId) {
+      setForm((prev) => ({ ...prev, centerId: availableCenters[0].id }));
+    }
+  }, [availableCenters]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -273,7 +283,7 @@ export const TransactionEntryPage: React.FC = () => {
                   value={form.centerId}
                   onChange={handleChange}
                 >
-                  {(user?.centers || []).map((c) => (
+                  {availableCenters.map((c) => (
                     <MenuItem key={c.id} value={c.id}>
                       {c.centerName} ({c.centerCode})
                     </MenuItem>
