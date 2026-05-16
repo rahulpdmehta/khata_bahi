@@ -60,6 +60,7 @@ import {
 import { fetchCenters } from '../admin/centerSlice';
 import { createEditRequest } from '../editRequests/editRequestSlice';
 import type { Expense } from '../../types';
+import { PAYMENT_MODES, formatPaymentMode, type PaymentModeValue } from '../../utils/paymentModes';
 
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
@@ -69,8 +70,6 @@ const statusConfig: Record<Expense['status'], { label: string; bg: string; color
   APPROVED: { label: 'Approved', bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
   REJECTED: { label: 'Rejected', bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
 };
-
-const PAYMENT_MODES = ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE'] as const;
 
 const fmtDate = (d: string) => { try { return format(new Date(d), 'MMM d, yyyy'); } catch { return d; } };
 
@@ -118,7 +117,7 @@ export const ExpensesPage: React.FC = () => {
     centerId: user?.centers?.[0]?.id || '',
     categoryId: '',
     amount: '',
-    paymentMode: 'CASH' as typeof PAYMENT_MODES[number],
+    paymentMode: 'CASH' as PaymentModeValue,
     vendorName: '',
     description: '',
     expenseDate: format(new Date(), 'yyyy-MM-dd'),
@@ -310,8 +309,8 @@ export const ExpensesPage: React.FC = () => {
                     onChange={handleChange}
                   >
                     {PAYMENT_MODES.map((m) => (
-                      <MenuItem key={m} value={m}>
-                        {m.replace('_', ' ')}
+                      <MenuItem key={m.value} value={m.value}>
+                        {m.label}
                       </MenuItem>
                     ))}
                   </TextField>
@@ -491,7 +490,7 @@ export const ExpensesPage: React.FC = () => {
                                 {isAdmin && <TableCell><Typography variant="body2">{(exp as any).center?.centerName || '—'}</Typography></TableCell>}
                                 <TableCell>{exp.category?.categoryName || '—'}</TableCell>
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{formatCurrency(Number(exp.amount))}</Typography></TableCell>
-                                <TableCell><Chip label={exp.paymentMode.replace('_', ' ')} size="small" sx={{ fontSize: '0.7rem', fontWeight: 500 }} /></TableCell>
+                                <TableCell><Chip label={formatPaymentMode(exp.paymentMode)} size="small" sx={{ fontSize: '0.7rem', fontWeight: 500 }} /></TableCell>
                                 <TableCell>{exp.vendorName || '—'}</TableCell>
                                 <TableCell>
                                   <Typography variant="body2">{fmtDate(exp.expenseDate)}</Typography>

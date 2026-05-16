@@ -147,8 +147,8 @@ async function main() {
     null, null, null, null, null,
   ];
 
-  type TxnPaymentMode = 'CASH' | 'UPI' | 'DUES' | 'BANK_TRANSFER' | 'CARD';
-  const paymentModes: TxnPaymentMode[] = ['CASH', 'CASH', 'CASH', 'UPI', 'UPI', 'DUES', 'BANK_TRANSFER', 'CARD'];
+  type TxnPaymentMode = 'CASH' | 'UPI' | 'DUES' | 'C_TO_C' | 'DISCOUNT';
+  const paymentModes: TxnPaymentMode[] = ['CASH', 'CASH', 'CASH', 'UPI', 'UPI', 'DUES', 'C_TO_C', 'DISCOUNT'];
   const incomeSrcList = [pucSrc, pucSrc, pucSrc, roadTaxSrc, insuranceSrc, serviceSrc, retestSrc, docSrc];
   const vehicleTypeList = [vt2w, vt3w, vt4wLMV, vt4wMCV, vtHCV];
   const centers = [center1, center2, center3];
@@ -176,7 +176,7 @@ async function main() {
         amount: Number(src.defaultAmount ?? 50) + randomInt(-10, 50),
         transactionDate: txDate,
         transactionTime: new Date(),
-        paymentMode: pm as 'CASH' | 'UPI' | 'DUES' | 'BANK_TRANSFER' | 'CARD',
+        paymentMode: pm,
         customerName: customerNames[cNameIdx] ?? undefined,
         customerMobile: customerMobiles[cNameIdx] ?? undefined,
         notes: day <= 2 ? 'Same-day entry' : undefined,
@@ -201,7 +201,7 @@ async function main() {
     centerId: string;
     userId: string;
     amount: number;
-    paymentMode: 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'CHEQUE';
+    paymentMode: 'CASH' | 'UPI' | 'C_TO_C' | 'DISCOUNT' | 'DUES';
     vendorName: string;
     description: string;
     daysAgoN: number;
@@ -211,15 +211,15 @@ async function main() {
 
   const expenseRows: ExpenseRow[] = [
     // Electricity — all centers, monthly
-    { categoryId: catElec.id, centerId: center1.id, userId: staff1.id, amount: 2800, paymentMode: 'BANK_TRANSFER', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - March', daysAgoN: 3, status: 'APPROVED', approvedBy: admin.id },
-    { categoryId: catElec.id, centerId: center2.id, userId: staff2.id, amount: 1950, paymentMode: 'BANK_TRANSFER', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - March', daysAgoN: 3, status: 'APPROVED', approvedBy: admin.id },
-    { categoryId: catElec.id, centerId: center3.id, userId: staff3.id, amount: 2100, paymentMode: 'BANK_TRANSFER', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - March', daysAgoN: 4, status: 'PENDING' },
-    { categoryId: catElec.id, centerId: center1.id, userId: staff1.id, amount: 2600, paymentMode: 'BANK_TRANSFER', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - February', daysAgoN: 32, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catElec.id, centerId: center1.id, userId: staff1.id, amount: 2800, paymentMode: 'C_TO_C', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - March', daysAgoN: 3, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catElec.id, centerId: center2.id, userId: staff2.id, amount: 1950, paymentMode: 'C_TO_C', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - March', daysAgoN: 3, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catElec.id, centerId: center3.id, userId: staff3.id, amount: 2100, paymentMode: 'C_TO_C', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - March', daysAgoN: 4, status: 'PENDING' },
+    { categoryId: catElec.id, centerId: center1.id, userId: staff1.id, amount: 2600, paymentMode: 'C_TO_C', vendorName: 'Delhi Electricity Board', description: 'Monthly electricity bill - February', daysAgoN: 32, status: 'APPROVED', approvedBy: admin.id },
 
     // Rent — monthly
-    { categoryId: catRent.id, centerId: center1.id, userId: admin.id, amount: 18000, paymentMode: 'CHEQUE', vendorName: 'Property Owner - Mr. Gupta', description: 'Office rent - March', daysAgoN: 2, status: 'APPROVED', approvedBy: admin.id },
-    { categoryId: catRent.id, centerId: center2.id, userId: admin.id, amount: 12000, paymentMode: 'CHEQUE', vendorName: 'Property Owner - Mrs. Sharma', description: 'Office rent - March', daysAgoN: 2, status: 'APPROVED', approvedBy: admin.id },
-    { categoryId: catRent.id, centerId: center3.id, userId: admin.id, amount: 9500, paymentMode: 'CHEQUE', vendorName: 'Property Owner - Mr. Singh', description: 'Office rent - March', daysAgoN: 3, status: 'PENDING' },
+    { categoryId: catRent.id, centerId: center1.id, userId: admin.id, amount: 18000, paymentMode: 'C_TO_C', vendorName: 'Property Owner - Mr. Gupta', description: 'Office rent - March', daysAgoN: 2, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catRent.id, centerId: center2.id, userId: admin.id, amount: 12000, paymentMode: 'C_TO_C', vendorName: 'Property Owner - Mrs. Sharma', description: 'Office rent - March', daysAgoN: 2, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catRent.id, centerId: center3.id, userId: admin.id, amount: 9500, paymentMode: 'C_TO_C', vendorName: 'Property Owner - Mr. Singh', description: 'Office rent - March', daysAgoN: 3, status: 'PENDING' },
 
     // Office Supplies
     { categoryId: catSupplies.id, centerId: center1.id, userId: staff1.id, amount: 1450, paymentMode: 'CASH', vendorName: 'Office Mart', description: 'Printer paper, pens, files', daysAgoN: 1, status: 'APPROVED', approvedBy: admin.id },
@@ -228,9 +228,9 @@ async function main() {
     { categoryId: catSupplies.id, centerId: center1.id, userId: staff1.id, amount: 750, paymentMode: 'CASH', vendorName: 'Local Stationery', description: 'Pens, rubber stamps, ink', daysAgoN: 15, status: 'PENDING' },
 
     // Equipment Maintenance
-    { categoryId: catMaint.id, centerId: center1.id, userId: admin.id, amount: 5500, paymentMode: 'BANK_TRANSFER', vendorName: 'TechServ Solutions', description: 'PUC machine annual service', daysAgoN: 7, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catMaint.id, centerId: center1.id, userId: admin.id, amount: 5500, paymentMode: 'C_TO_C', vendorName: 'TechServ Solutions', description: 'PUC machine annual service', daysAgoN: 7, status: 'APPROVED', approvedBy: admin.id },
     { categoryId: catMaint.id, centerId: center2.id, userId: staff2.id, amount: 3200, paymentMode: 'CASH', vendorName: 'Quick Fix Repairs', description: 'Printer and scanner repair', daysAgoN: 12, status: 'APPROVED', approvedBy: admin.id },
-    { categoryId: catMaint.id, centerId: center3.id, userId: staff3.id, amount: 8000, paymentMode: 'BANK_TRANSFER', vendorName: 'AutoTest Equipment Ltd', description: 'Vehicle testing equipment calibration', daysAgoN: 20, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catMaint.id, centerId: center3.id, userId: staff3.id, amount: 8000, paymentMode: 'C_TO_C', vendorName: 'AutoTest Equipment Ltd', description: 'Vehicle testing equipment calibration', daysAgoN: 20, status: 'APPROVED', approvedBy: admin.id },
     { categoryId: catMaint.id, centerId: center1.id, userId: staff1.id, amount: 1500, paymentMode: 'CASH', vendorName: 'Local Mechanic', description: 'Generator maintenance', daysAgoN: 25, status: 'REJECTED' },
 
     // Telecom
@@ -254,7 +254,7 @@ async function main() {
     { categoryId: catTransport.id, centerId: center3.id, userId: staff3.id, amount: 1200, paymentMode: 'CASH', vendorName: 'Petrol Pump - Indian Oil', description: 'Bike fuel reimbursement', daysAgoN: 14, status: 'REJECTED' },
 
     // Marketing
-    { categoryId: catMarketing.id, centerId: center1.id, userId: admin.id, amount: 5000, paymentMode: 'BANK_TRANSFER', vendorName: 'PrintMedia Hub', description: 'Pamphlets and banners for awareness drive', daysAgoN: 18, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catMarketing.id, centerId: center1.id, userId: admin.id, amount: 5000, paymentMode: 'C_TO_C', vendorName: 'PrintMedia Hub', description: 'Pamphlets and banners for awareness drive', daysAgoN: 18, status: 'APPROVED', approvedBy: admin.id },
     { categoryId: catMarketing.id, centerId: center2.id, userId: admin.id, amount: 3500, paymentMode: 'UPI', vendorName: 'Social Media Agency', description: 'Facebook & Google ads - March', daysAgoN: 10, status: 'PENDING' },
 
     // Miscellaneous
@@ -264,9 +264,9 @@ async function main() {
     { categoryId: catMisc.id, centerId: center1.id, userId: staff1.id, amount: 890, paymentMode: 'UPI', vendorName: 'Online Store', description: 'Extension cords and power strips', daysAgoN: 16, status: 'PENDING' },
 
     // Salary (admin level)
-    { categoryId: catSalary.id, centerId: center1.id, userId: admin.id, amount: 45000, paymentMode: 'BANK_TRANSFER', vendorName: 'Payroll - March', description: 'Staff salary disbursement - Center 1', daysAgoN: 0, status: 'APPROVED', approvedBy: admin.id },
-    { categoryId: catSalary.id, centerId: center2.id, userId: admin.id, amount: 38000, paymentMode: 'BANK_TRANSFER', vendorName: 'Payroll - March', description: 'Staff salary disbursement - Center 2', daysAgoN: 0, status: 'APPROVED', approvedBy: admin.id },
-    { categoryId: catSalary.id, centerId: center3.id, userId: admin.id, amount: 32000, paymentMode: 'BANK_TRANSFER', vendorName: 'Payroll - March', description: 'Staff salary disbursement - Center 3', daysAgoN: 0, status: 'PENDING' },
+    { categoryId: catSalary.id, centerId: center1.id, userId: admin.id, amount: 45000, paymentMode: 'C_TO_C', vendorName: 'Payroll - March', description: 'Staff salary disbursement - Center 1', daysAgoN: 0, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catSalary.id, centerId: center2.id, userId: admin.id, amount: 38000, paymentMode: 'C_TO_C', vendorName: 'Payroll - March', description: 'Staff salary disbursement - Center 2', daysAgoN: 0, status: 'APPROVED', approvedBy: admin.id },
+    { categoryId: catSalary.id, centerId: center3.id, userId: admin.id, amount: 32000, paymentMode: 'C_TO_C', vendorName: 'Payroll - March', description: 'Staff salary disbursement - Center 3', daysAgoN: 0, status: 'PENDING' },
   ];
 
   for (const row of expenseRows) {

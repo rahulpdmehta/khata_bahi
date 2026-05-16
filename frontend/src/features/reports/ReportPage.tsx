@@ -32,6 +32,7 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchCenters } from '../admin/centerSlice';
 import { apiClient } from '../../utils/apiClient';
 import type { Transaction, Expense, Settlement } from '../../types';
+import { formatPaymentMode } from '../../utils/paymentModes';
 
 type ReportType = 'all' | 'transactions' | 'expenses' | 'settlements';
 
@@ -575,7 +576,7 @@ export const ReportPage: React.FC = () => {
                             <TableCell>
                               {t.paymentMode ? (
                                 <Chip
-                                  label={t.paymentMode.replace(/_/g, ' ')}
+                                  label={formatPaymentMode(t.paymentMode)}
                                   size="small"
                                   variant="outlined"
                                 />

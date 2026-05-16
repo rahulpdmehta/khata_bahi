@@ -33,16 +33,15 @@ enum ExpenseStatus {
 
 enum PaymentMode {
   CASH
-  BANK_TRANSFER
   UPI
-  CARD
-  CHEQUE
+  C_TO_C
+  DISCOUNT
   DUES
   SPLIT
 }
 
 model User {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String   @id @default(uuid()) @db.Char(36)
   username      String   @unique @db.VarChar(50)
   email         String   @unique @db.VarChar(100)
   passwordHash  String   @db.VarChar(255)
@@ -65,7 +64,7 @@ model User {
 }
 
 model Center {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String   @id @default(uuid()) @db.Char(36)
   centerCode    String   @unique @db.VarChar(20)
   centerName    String   @db.VarChar(100)
   address       String?
@@ -84,9 +83,9 @@ model Center {
 }
 
 model UserCenter {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @db.Uuid
-  centerId   String   @db.Uuid
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String   @db.Char(36)
+  centerId   String   @db.Char(36)
   assignedAt DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -99,7 +98,7 @@ model UserCenter {
 }
 
 model IncomeSource {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String   @id @default(uuid()) @db.Char(36)
   sourceName    String   @db.VarChar(100)
   sourceCode    String   @unique @db.VarChar(20)
   defaultAmount Decimal? @db.Decimal(10, 2)
@@ -111,7 +110,7 @@ model IncomeSource {
 }
 
 model VehicleType {
-  id         String  @id @default(uuid()) @db.Uuid
+  id         String  @id @default(uuid()) @db.Char(36)
   typeName   String  @db.VarChar(50)
   typeCode   String  @unique @db.VarChar(20)
   baseCharge Decimal @db.Decimal(10, 2)
@@ -123,7 +122,7 @@ model VehicleType {
 }
 
 model ExpenseCategory {
-  id                String   @id @default(uuid()) @db.Uuid
+  id                String   @id @default(uuid()) @db.Char(36)
   categoryName      String   @db.VarChar(100)
   categoryCode      String   @unique @db.VarChar(20)
   description       String?
@@ -136,11 +135,11 @@ model ExpenseCategory {
 }
 
 model Expense {
-  id              String        @id @default(uuid()) @db.Uuid
+  id              String        @id @default(uuid()) @db.Char(36)
   expenseNumber   String        @unique @db.VarChar(50)
-  centerId        String        @db.Uuid
-  userId          String        @db.Uuid
-  categoryId      String        @db.Uuid
+  centerId        String        @db.Char(36)
+  userId          String        @db.Char(36)
+  categoryId      String        @db.Char(36)
   amount          Decimal       @db.Decimal(10, 2)
   paymentMode     PaymentMode
   vendorName      String?       @db.VarChar(200)
@@ -148,7 +147,7 @@ model Expense {
   receiptUrl      String?       @db.VarChar(500)
   expenseDate     DateTime      @db.Date
   status          ExpenseStatus @default(PENDING)
-  approvedBy      String?       @db.Uuid
+  approvedBy      String?       @db.Char(36)
   approvedAt      DateTime?
   rejectionReason String?
   createdAt       DateTime      @default(now())
@@ -168,13 +167,13 @@ model Expense {
 }
 
 model Transaction {
-  id                String      @id @default(uuid()) @db.Uuid
+  id                String      @id @default(uuid()) @db.Char(36)
   transactionNumber String      @unique @db.VarChar(50)
-  centerId          String      @db.Uuid
-  userId            String      @db.Uuid
-  vehicleTypeId     String?     @db.Uuid
+  centerId          String      @db.Char(36)
+  userId            String      @db.Char(36)
+  vehicleTypeId     String?     @db.Char(36)
   vehicleNumber     String?     @db.VarChar(20)
-  incomeSourceId    String      @db.Uuid
+  incomeSourceId    String      @db.Char(36)
   amount            Decimal     @db.Decimal(10, 2)
   transactionDate   DateTime    @db.Date
   transactionTime   DateTime    @db.Time(0)
@@ -184,9 +183,9 @@ model Transaction {
   notes             String?
   isLocked          Boolean     @default(true)
   createdAt         DateTime    @default(now())
-  createdBy         String?     @db.Uuid
+  createdBy         String?     @db.Char(36)
   updatedAt         DateTime    @updatedAt
-  updatedBy         String?     @db.Uuid
+  updatedBy         String?     @db.Char(36)
 
   center       Center              @relation(fields: [centerId], references: [id])
   user         User                @relation(fields: [userId], references: [id])
@@ -202,8 +201,8 @@ model Transaction {
 }
 
 model TransactionPayment {
-  id            String      @id @default(uuid()) @db.Uuid
-  transactionId String      @db.Uuid
+  id            String      @id @default(uuid()) @db.Char(36)
+  transactionId String      @db.Char(36)
   paymentMode   PaymentMode
   amount        Decimal     @db.Decimal(10, 2)
 
@@ -214,17 +213,17 @@ model TransactionPayment {
 }
 
 model EditRequest {
-  id              String        @id @default(uuid()) @db.Uuid
-  transactionId   String?       @db.Uuid
-  expenseId       String?       @db.Uuid
-  settlementId    String?       @db.Uuid
+  id              String        @id @default(uuid()) @db.Char(36)
+  transactionId   String?       @db.Char(36)
+  expenseId       String?       @db.Char(36)
+  settlementId    String?       @db.Char(36)
   resourceType    String        @default("TRANSACTION") @db.VarChar(20)
-  requestedBy     String        @db.Uuid
+  requestedBy     String        @db.Char(36)
   requestReason   String
   originalData    Json
   proposedChanges Json
   status          RequestStatus @default(PENDING)
-  reviewedBy      String?       @db.Uuid
+  reviewedBy      String?       @db.Char(36)
   reviewNotes     String?
   requestedAt     DateTime      @default(now())
   reviewedAt      DateTime?
@@ -244,10 +243,10 @@ model EditRequest {
 }
 
 model Settlement {
-  id                 String           @id @default(uuid()) @db.Uuid
+  id                 String           @id @default(uuid()) @db.Char(36)
   settlementNumber   String           @unique @db.VarChar(50)
-  centerId           String           @db.Uuid
-  userId             String           @db.Uuid
+  centerId           String           @db.Char(36)
+  userId             String           @db.Char(36)
   settlementDate     DateTime         @db.Date
   totalIncome        Decimal          @db.Decimal(10, 2)
   totalExpenses      Decimal          @default(0) @db.Decimal(10, 2)
@@ -255,7 +254,7 @@ model Settlement {
   carryForwardAmount Decimal          @default(0) @db.Decimal(10, 2)
   finalAmount        Decimal          @db.Decimal(10, 2)
   status             SettlementStatus @default(PENDING)
-  approvedBy         String?          @db.Uuid
+  approvedBy         String?          @db.Char(36)
   approvedAt         DateTime?
   notes              String?
   createdAt          DateTime         @default(now())
@@ -272,11 +271,11 @@ model Settlement {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String?  @db.Uuid
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String?  @db.Char(36)
   action     String   @db.VarChar(50)
   entityType String   @db.VarChar(50)
-  entityId   String?  @db.Uuid
+  entityId   String?  @db.Char(36)
   oldData    Json?
   newData    Json?
   ipAddress  String?  @db.VarChar(45)

@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { PAYMENT_MODES, TRANSACTION_PAYMENT_MODES } from '../../constants/paymentModes';
 
 const splitPaymentSchema = z.object({
-  paymentMode: z.enum(['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'DUES']),
+  paymentMode: z.enum(PAYMENT_MODES),
   amount: z.number().positive(),
 });
 
@@ -11,7 +12,7 @@ export const createTransactionSchema = z.object({
   incomeSourceId: z.string().uuid(),
   amount: z.number().positive('Amount must be positive'),
   centerId: z.string().uuid(),
-  paymentMode: z.enum(['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'DUES', 'SPLIT']).default('CASH'),
+  paymentMode: z.enum(TRANSACTION_PAYMENT_MODES).default('CASH'),
   splitPayments: z.array(splitPaymentSchema).optional(),
   customerName: z.string().max(100).optional(),
   customerMobile: z.string().max(15).optional(),

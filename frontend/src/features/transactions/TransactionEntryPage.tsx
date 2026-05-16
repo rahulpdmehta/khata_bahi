@@ -28,15 +28,7 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { createTransaction } from './transactionSlice';
 import { fetchIncomeSources, fetchVehicleTypes } from '../masterData/masterDataSlice';
 import { fetchCenters } from '../admin/centerSlice';
-
-const PAYMENT_MODES = [
-  { value: 'CASH', label: 'Cash' },
-  { value: 'UPI', label: 'UPI' },
-  { value: 'DUES', label: 'Dues' },
-  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-  { value: 'CARD', label: 'Card' },
-  { value: 'CHEQUE', label: 'Cheque' },
-];
+import { PAYMENT_MODES, type PaymentModeValue } from '../../utils/paymentModes';
 
 interface SplitEntry {
   paymentMode: string;
@@ -54,6 +46,43 @@ const emptyForm = (defaultCenterId: string) => ({
   customerMobile: '',
   notes: '',
 });
+
+/** Auto-fill the other split line when exactly two modes are selected */
+function balanceSplitEntries(
+  entries: SplitEntry[],
+  total: number,
+  editedMode?: string
+): SplitEntry[] {
+  if (entries.length !== 2 || total <= 0) return entries;
+
+  const [first, second] = entries;
+  const formatRemainder = (entered: number) => {
+    const remainder = Math.max(0, Math.round((total - entered) * 100) / 100);
+    return remainder > 0 ? String(remainder) : '';
+  };
+
+  if (editedMode === first.paymentMode) {
+    const entered = parseFloat(first.amount) || 0;
+    return [first, { ...second, amount: formatRemainder(entered) }];
+  }
+  if (editedMode === second.paymentMode) {
+    const entered = parseFloat(second.amount) || 0;
+    return [{ ...first, amount: formatRemainder(entered) }, second];
+  }
+
+  const firstAmt = parseFloat(first.amount) || 0;
+  const secondAmt = parseFloat(second.amount) || 0;
+  if (firstAmt > 0 && secondAmt === 0) {
+    return [first, { ...second, amount: formatRemainder(firstAmt) }];
+  }
+  if (secondAmt > 0 && firstAmt === 0) {
+    return [{ ...first, amount: formatRemainder(secondAmt) }, second];
+  }
+  if (firstAmt > 0) {
+    return [first, { ...second, amount: formatRemainder(firstAmt) }];
+  }
+  return entries;
+}
 
 export const TransactionEntryPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -95,9 +124,13 @@ export const TransactionEntryPage: React.FC = () => {
         const vt = vehicleTypes.find((v) => v.id === value);
         if (vt?.baseCharge != null) {
           updated.amount = String(vt.baseCharge);
-          setSplitEntries((entries) =>
-            entries.length === 1 ? [{ ...entries[0], amount: String(vt.baseCharge) }] : entries
-          );
+          setSplitEntries((entries) => {
+            const next =
+              entries.length === 1
+                ? [{ ...entries[0], amount: String(vt.baseCharge) }]
+                : entries;
+            return balanceSplitEntries(next, Number(vt.baseCharge));
+          });
         }
       }
       if (name === 'incomeSourceId') {
@@ -105,13 +138,23 @@ export const TransactionEntryPage: React.FC = () => {
         if (src) {
           updated.amount = String(src.defaultAmount);
           // auto-fill single mode amount
-          setSplitEntries((entries) =>
-            entries.length === 1 ? [{ ...entries[0], amount: String(src.defaultAmount) }] : entries
-          );
+          setSplitEntries((entries) => {
+            const amt = Number(src.defaultAmount);
+            const next =
+              entries.length === 1
+                ? [{ ...entries[0], amount: String(amt) }]
+                : entries;
+            return balanceSplitEntries(next, amt);
+          });
         }
       }
-      if (name === 'amount' && splitEntries.length === 1) {
-        setSplitEntries([{ ...splitEntries[0], amount: value }]);
+      if (name === 'amount') {
+        const newTotal = parseFloat(value) || 0;
+        if (splitEntries.length === 1) {
+          setSplitEntries([{ ...splitEntries[0], amount: value }]);
+        } else if (splitEntries.length === 2) {
+          setSplitEntries(balanceSplitEntries(splitEntries, newTotal));
+        }
       }
       return updated;
     });
@@ -121,15 +164,18 @@ export const TransactionEntryPage: React.FC = () => {
     setSplitEntries((prev) => {
       const exists = prev.find((e) => e.paymentMode === mode);
       if (exists) {
-        // Remove it (keep at least 1)
         return prev.length > 1 ? prev.filter((e) => e.paymentMode !== mode) : prev;
       }
-      return [...prev, { paymentMode: mode, amount: '' }];
+      const next = [...prev, { paymentMode: mode, amount: '' }];
+      return balanceSplitEntries(next, totalAmount);
     });
   };
 
   const updateSplitAmount = (mode: string, value: string) => {
-    setSplitEntries((prev) => prev.map((e) => e.paymentMode === mode ? { ...e, amount: value } : e));
+    setSplitEntries((prev) => {
+      const updated = prev.map((e) => (e.paymentMode === mode ? { ...e, amount: value } : e));
+      return balanceSplitEntries(updated, totalAmount, mode);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,7 +190,7 @@ export const TransactionEntryPage: React.FC = () => {
     }
     try {
       const splitPayments = splitEntries.map((e) => ({
-        paymentMode: e.paymentMode as 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CARD' | 'CHEQUE' | 'DUES',
+        paymentMode: e.paymentMode as PaymentModeValue,
         amount: parseFloat(e.amount) || 0,
       }));
       await dispatch(

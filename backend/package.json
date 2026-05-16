@@ -20,6 +20,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
     "sync:vehicle-types": "ts-node scripts/sync-vehicle-types.ts",
+    "sync:payment-modes": "ts-node scripts/sync-payment-modes.ts",
     "prisma:studio": "prisma studio"
   },
   "keywords": [

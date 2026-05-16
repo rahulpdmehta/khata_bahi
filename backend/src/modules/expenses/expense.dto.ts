@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { PAYMENT_MODES } from '../../constants/paymentModes';
 
 export const createExpenseSchema = z.object({
   centerId: z.string().uuid(),
   categoryId: z.string().uuid(),
   amount: z.number().positive('Amount must be positive'),
-  paymentMode: z.enum(['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE']),
+  paymentMode: z.enum(PAYMENT_MODES),
   vendorName: z.string().optional(),
   description: z.string().optional(),
   expenseDate: z.string(),

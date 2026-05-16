@@ -32,7 +32,7 @@ export interface Expense {
   categoryId: string;
   userId?: string;
   amount: number;
-  paymentMode: 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'CHEQUE';
+  paymentMode: 'CASH' | 'UPI' | 'C_TO_C' | 'DISCOUNT' | 'DUES';
   vendorName?: string;
   description?: string;
   receiptUrl?: string;

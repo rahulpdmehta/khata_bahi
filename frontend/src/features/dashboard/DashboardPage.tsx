@@ -61,6 +61,7 @@ import type { Center } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { apiClient } from '../../utils/apiClient';
 import type { CenterPerformance, ExpenseBreakdown } from '../../types';
+import { formatPaymentMode } from '../../utils/paymentModes';
 
 const DONUT_COLORS = ['#000666', '#006b5e', '#1a237e', '#3d9b8f', '#283593', '#4db6ac'];
 
@@ -364,6 +365,7 @@ export const DashboardPage: React.FC = () => {
       }).catch(() => {});
     }
   }, [isAdmin]);
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -679,7 +681,7 @@ export const DashboardPage: React.FC = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                       <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: DONUT_COLORS[idx % DONUT_COLORS.length], flexShrink: 0 }} />
                       <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155', textTransform: 'capitalize', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {d.paymentMode.replace(/_/g, ' ')}
+                        {formatPaymentMode(d.paymentMode)}
                       </Typography>
                     </Box>
                     <Typography sx={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
@@ -696,7 +698,7 @@ export const DashboardPage: React.FC = () => {
                 <ResponsiveContainer width={180} height={220}>
                   <PieChart>
                     <Pie
-                      data={paymentModeData.map((d) => ({ ...d, name: d.paymentMode.replace(/_/g, ' ') }))}
+                      data={paymentModeData.map((d) => ({ ...d, name: formatPaymentMode(d.paymentMode) }))}
                       dataKey="totalAmount"
                       nameKey="name"
                       cx="50%"
