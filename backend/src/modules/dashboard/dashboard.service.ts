@@ -207,10 +207,10 @@ export class DashboardService {
       _count: { id: true },
     });
 
-    // Split transactions: aggregate from TransactionPayment rows
+    // Split transactions only — non-split txns already counted above
     const splitPayments = await prisma.transactionPayment.findMany({
       where: {
-        transaction: baseWhere,
+        transaction: { ...baseWhere, paymentMode: 'SPLIT' },
       },
       select: { paymentMode: true, amount: true },
     });
