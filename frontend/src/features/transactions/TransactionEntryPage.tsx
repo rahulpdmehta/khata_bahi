@@ -91,6 +91,15 @@ export const TransactionEntryPage: React.FC = () => {
     const { name, value } = e.target;
     setForm((prev) => {
       const updated = { ...prev, [name]: value };
+      if (name === 'vehicleTypeId') {
+        const vt = vehicleTypes.find((v) => v.id === value);
+        if (vt?.baseCharge != null) {
+          updated.amount = String(vt.baseCharge);
+          setSplitEntries((entries) =>
+            entries.length === 1 ? [{ ...entries[0], amount: String(vt.baseCharge) }] : entries
+          );
+        }
+      }
       if (name === 'incomeSourceId') {
         const src = incomeSources.find((s) => s.id === value);
         if (src) {
@@ -229,7 +238,7 @@ export const TransactionEntryPage: React.FC = () => {
                   <MenuItem value="">Select vehicle type</MenuItem>
                   {vehicleTypes.map((vt) => (
                     <MenuItem key={vt.id} value={vt.id}>
-                      {vt.typeName} ({vt.typeCode})
+                      {vt.typeName} ({vt.typeCode}) — ₹{Number(vt.baseCharge)}
                     </MenuItem>
                   ))}
                 </TextField>

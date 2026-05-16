@@ -97,13 +97,12 @@ async function main() {
   console.log('✅ Created income sources');
 
   // ── Vehicle Types ──
-  const [vt2w, vt4wP, vt4wD, vtCommL, vtCommH, vt3w] = await Promise.all([
+  const [vt2w, vt3w, vt4wLMV, vt4wMCV, vtHCV] = await Promise.all([
     prisma.vehicleType.create({ data: { typeName: 'Two Wheeler', typeCode: '2W', baseCharge: 50 } }),
-    prisma.vehicleType.create({ data: { typeName: 'Four Wheeler - Petrol', typeCode: '4W_PETROL', baseCharge: 100 } }),
-    prisma.vehicleType.create({ data: { typeName: 'Four Wheeler - Diesel', typeCode: '4W_DIESEL', baseCharge: 120 } }),
-    prisma.vehicleType.create({ data: { typeName: 'Commercial - Light', typeCode: 'COMMERCIAL_LIGHT', baseCharge: 150 } }),
-    prisma.vehicleType.create({ data: { typeName: 'Commercial - Heavy', typeCode: 'COMMERCIAL_HEAVY', baseCharge: 200 } }),
-    prisma.vehicleType.create({ data: { typeName: 'Three Wheeler', typeCode: '3W', baseCharge: 60 } }),
+    prisma.vehicleType.create({ data: { typeName: 'Three Wheeler', typeCode: '3W', baseCharge: 80 } }),
+    prisma.vehicleType.create({ data: { typeName: 'Four Wheeler - LMV', typeCode: '4W_LMV', baseCharge: 120 } }),
+    prisma.vehicleType.create({ data: { typeName: 'Four Wheeler - MCV', typeCode: '4W_MCV', baseCharge: 200 } }),
+    prisma.vehicleType.create({ data: { typeName: 'Commercial - HCV', typeCode: 'COMMERCIAL_HCV', baseCharge: 300 } }),
   ]);
   console.log('✅ Created vehicle types');
 
@@ -151,7 +150,7 @@ async function main() {
   type TxnPaymentMode = 'CASH' | 'UPI' | 'DUES' | 'BANK_TRANSFER' | 'CARD';
   const paymentModes: TxnPaymentMode[] = ['CASH', 'CASH', 'CASH', 'UPI', 'UPI', 'DUES', 'BANK_TRANSFER', 'CARD'];
   const incomeSrcList = [pucSrc, pucSrc, pucSrc, roadTaxSrc, insuranceSrc, serviceSrc, retestSrc, docSrc];
-  const vehicleTypeList = [vt2w, vt2w, vt4wP, vt4wP, vt4wD, vtCommL, vtCommH, vt3w];
+  const vehicleTypeList = [vt2w, vt3w, vt4wLMV, vt4wMCV, vtHCV];
   const centers = [center1, center2, center3];
   const txnData: Parameters<typeof prisma.transaction.create>[0]['data'][] = [];
 
