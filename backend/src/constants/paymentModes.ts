@@ -15,6 +15,9 @@ export const PAYMENT_MODE_LABELS: Record<string, string> = {
   DISCOUNT: 'Discount',
   DUES: 'Dues',
   SPLIT: 'Split',
+  BANK_TRANSFER: 'C to C',
+  CARD: 'C to C',
+  CHEQUE: 'C to C',
 };
 
 export function formatPaymentMode(mode: string): string {
