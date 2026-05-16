@@ -25,7 +25,11 @@ export class EditRequestController {
   });
 
   findById = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const result = await editRequestService.findById(req.params.id);
+    const result = await editRequestService.findById(
+      req.params.id,
+      req.user!.userId,
+      req.user!.role
+    );
     res.json(ApiResponse.success(result));
   });
 

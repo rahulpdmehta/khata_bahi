@@ -28,41 +28,74 @@ function parseDateRange(query: Record<string, unknown>): { startDate: Date; endD
 export class DashboardController {
   getOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { centerId } = req.query;
-    const result = await dashboardService.getOverview(req.user!.userId, centerId as string);
+    const result = await dashboardService.getOverview(
+      req.user!.userId,
+      req.user!.role,
+      centerId as string | undefined
+    );
     res.json(ApiResponse.success(result));
   });
 
   getIncomeVsExpenseTrend = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { centerId } = req.query;
     const { startDate, endDate } = parseDateRange(req.query as Record<string, unknown>);
-    const result = await dashboardService.getIncomeVsExpenseTrend(startDate, endDate, centerId as string);
+    const result = await dashboardService.getIncomeVsExpenseTrend(
+      req.user!.userId,
+      req.user!.role,
+      startDate,
+      endDate,
+      centerId as string | undefined
+    );
     res.json(ApiResponse.success(result));
   });
 
   getCenterPerformance = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { startDate, endDate } = parseDateRange(req.query as Record<string, unknown>);
-    const result = await dashboardService.getCenterPerformance(startDate, endDate);
+    const result = await dashboardService.getCenterPerformance(
+      req.user!.userId,
+      req.user!.role,
+      startDate,
+      endDate
+    );
     res.json(ApiResponse.success(result));
   });
 
   getExpenseBreakdown = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { centerId } = req.query;
     const { startDate, endDate } = parseDateRange(req.query as Record<string, unknown>);
-    const result = await dashboardService.getExpenseBreakdown(startDate, endDate, centerId as string);
+    const result = await dashboardService.getExpenseBreakdown(
+      req.user!.userId,
+      req.user!.role,
+      startDate,
+      endDate,
+      centerId as string | undefined
+    );
     res.json(ApiResponse.success(result));
   });
 
   getSettlementDue = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { centerId } = req.query;
     const { startDate, endDate } = parseDateRange(req.query as Record<string, unknown>);
-    const result = await dashboardService.getSettlementDue(startDate, endDate, centerId as string);
+    const result = await dashboardService.getSettlementDue(
+      req.user!.userId,
+      req.user!.role,
+      startDate,
+      endDate,
+      centerId as string | undefined
+    );
     res.json(ApiResponse.success(result));
   });
 
   getPaymentModeBreakdown = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { centerId } = req.query;
     const { startDate, endDate } = parseDateRange(req.query as Record<string, unknown>);
-    const result = await dashboardService.getPaymentModeBreakdown(startDate, endDate, centerId as string);
+    const result = await dashboardService.getPaymentModeBreakdown(
+      req.user!.userId,
+      req.user!.role,
+      startDate,
+      endDate,
+      centerId as string | undefined
+    );
     res.json(ApiResponse.success(result));
   });
 }

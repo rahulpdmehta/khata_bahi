@@ -90,8 +90,9 @@ export const TransactionEntryPage: React.FC = () => {
   const { incomeSources, vehicleTypes } = useAppSelector((state) => state.masterData);
   const { loading } = useAppSelector((state) => state.transactions);
   const { centers: allCenters } = useAppSelector((state) => state.centers);
+  const isAdmin = user?.role === 'ADMIN';
 
-  const availableCenters = allCenters.length > 0 ? allCenters : (user?.centers || []);
+  const availableCenters = isAdmin && allCenters.length > 0 ? allCenters : (user?.centers || []);
   const defaultCenterId = availableCenters[0]?.id || '';
   const [form, setForm] = useState(emptyForm(defaultCenterId));
   // splitEntries: one entry per selected payment mode
@@ -107,8 +108,8 @@ export const TransactionEntryPage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchIncomeSources());
     dispatch(fetchVehicleTypes());
-    dispatch(fetchCenters());
-  }, [dispatch]);
+    if (isAdmin) dispatch(fetchCenters());
+  }, [dispatch, isAdmin]);
 
   useEffect(() => {
     if (availableCenters.length > 0 && !form.centerId) {

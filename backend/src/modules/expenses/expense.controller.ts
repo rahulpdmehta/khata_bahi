@@ -16,7 +16,7 @@ export class ExpenseController {
 
   findAll = asyncHandler(async (req: AuthRequest, res: Response) => {
     const filters = expenseFiltersSchema.parse(req.query);
-    const result = await expenseService.findAll(req.user!.userId, filters);
+    const result = await expenseService.findAll(req.user!.userId, req.user!.role, filters);
     res.json(ApiResponse.success(result));
   });
 

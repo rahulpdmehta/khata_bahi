@@ -1,14 +1,20 @@
 import { prisma } from '../../config/database';
 import { startOfDay, endOfDay, startOfMonth, startOfWeek } from 'date-fns';
+import { buildCenterWhereClause, getStaffCenterIds } from '../../utils/centerAccess';
 
 export class DashboardService {
-  async getOverview(_userId: string, centerId?: string) {
-    const today = new Date();
-    const where: Record<string, unknown> = {};
+  private async centerScope(
+    userId: string,
+    role: string,
+    centerId?: string
+  ): Promise<Record<string, unknown>> {
+    return buildCenterWhereClause(userId, role, centerId);
+  }
 
-    if (centerId) {
-      where.centerId = centerId;
-    }
+  async getOverview(userId: string, role: string, centerId?: string) {
+    const today = new Date();
+    const centerFilter = await this.centerScope(userId, role, centerId);
+    const where = { ...centerFilter };
 
     const [todayIncome, todayExpenses, weekIncome, weekExpenses, monthIncome, monthExpenses] =
       await Promise.all([
@@ -78,18 +84,23 @@ export class DashboardService {
     };
   }
 
-  async getIncomeVsExpenseTrend(startDate: Date, endDate: Date, centerId?: string) {
+  async getIncomeVsExpenseTrend(
+    userId: string,
+    role: string,
+    startDate: Date,
+    endDate: Date,
+    centerId?: string
+  ) {
+    const centerFilter = await this.centerScope(userId, role, centerId);
     const txWhere: Record<string, unknown> = {
+      ...centerFilter,
       transactionDate: { gte: startDate, lte: endDate },
     };
     const expWhere: Record<string, unknown> = {
+      ...centerFilter,
       expenseDate: { gte: startDate, lte: endDate },
       status: 'APPROVED',
     };
-    if (centerId) {
-      txWhere.centerId = centerId;
-      expWhere.centerId = centerId;
-    }
 
     const [transactions, expenses] = await Promise.all([
       prisma.transaction.findMany({ where: txWhere, select: { transactionDate: true, amount: true } }),
@@ -117,9 +128,16 @@ export class DashboardService {
       .map(([date, total]) => ({ date, total }));
   }
 
-  async getCenterPerformance(startDate: Date, endDate: Date) {
+  /** All centers for admin; assigned centers only for staff. */
+  async getCenterPerformance(userId: string, role: string, startDate: Date, endDate: Date) {
+    const centerWhere =
+      role === 'ADMIN'
+        ? { isActive: true }
+        : { isActive: true, id: { in: await getStaffCenterIds(userId) } };
+
     const centers = await prisma.center.findMany({
-      where: { isActive: true },
+      where: centerWhere,
+      orderBy: { centerName: 'asc' },
     });
 
     const performance = await Promise.all(
@@ -154,18 +172,22 @@ export class DashboardService {
     return performance;
   }
 
-  async getExpenseBreakdown(startDate: Date, endDate: Date, centerId?: string) {
+  async getExpenseBreakdown(
+    userId: string,
+    role: string,
+    startDate: Date,
+    endDate: Date,
+    centerId?: string
+  ) {
+    const centerFilter = await this.centerScope(userId, role, centerId);
     const where: Record<string, unknown> = {
+      ...centerFilter,
       expenseDate: {
         gte: startDate,
         lte: endDate,
       },
       status: 'APPROVED',
     };
-
-    if (centerId) {
-      where.centerId = centerId;
-    }
 
     const result = await prisma.expense.groupBy({
       by: ['categoryId'],
@@ -193,13 +215,19 @@ export class DashboardService {
     }));
   }
 
-  async getPaymentModeBreakdown(startDate: Date, endDate: Date, centerId?: string) {
+  async getPaymentModeBreakdown(
+    userId: string,
+    role: string,
+    startDate: Date,
+    endDate: Date,
+    centerId?: string
+  ) {
+    const centerFilter = await this.centerScope(userId, role, centerId);
     const baseWhere: Record<string, unknown> = {
+      ...centerFilter,
       transactionDate: { gte: startDate, lte: endDate },
     };
-    if (centerId) baseWhere.centerId = centerId;
 
-    // Non-split transactions: group directly by paymentMode
     const normalResult = await prisma.transaction.groupBy({
       by: ['paymentMode'],
       where: { ...baseWhere, paymentMode: { not: 'SPLIT' } },
@@ -207,7 +235,6 @@ export class DashboardService {
       _count: { id: true },
     });
 
-    // Split transactions only — non-split txns already counted above
     const splitPayments = await prisma.transactionPayment.findMany({
       where: {
         transaction: { ...baseWhere, paymentMode: 'SPLIT' },
@@ -215,7 +242,6 @@ export class DashboardService {
       select: { paymentMode: true, amount: true },
     });
 
-    // Merge into a single map
     const map = new Map<string, { totalAmount: number; count: number }>();
 
     for (const r of normalResult) {
@@ -230,7 +256,7 @@ export class DashboardService {
       const existing = map.get(key) ?? { totalAmount: 0, count: 0 };
       map.set(key, {
         totalAmount: existing.totalAmount + Number(sp.amount),
-        count: existing.count, // split payments share the parent txn count; don't double-count
+        count: existing.count,
       });
     }
 
@@ -241,19 +267,24 @@ export class DashboardService {
     }));
   }
 
-  async getSettlementDue(startDate: Date, endDate: Date, centerId?: string) {
+  async getSettlementDue(
+    userId: string,
+    role: string,
+    startDate: Date,
+    endDate: Date,
+    centerId?: string
+  ) {
+    const centerFilter = await this.centerScope(userId, role, centerId);
     const txWhere: Record<string, unknown> = {
+      ...centerFilter,
       transactionDate: { gte: startDate, lte: endDate },
     };
-    if (centerId) txWhere.centerId = centerId;
 
-    // CASH from non-split transactions
     const directCash = await prisma.transaction.aggregate({
       where: { ...txWhere, paymentMode: 'CASH' },
       _sum: { amount: true },
     });
 
-    // CASH portions from SPLIT transactions
     const splitCash = await prisma.transactionPayment.aggregate({
       where: {
         paymentMode: 'CASH',
@@ -264,24 +295,22 @@ export class DashboardService {
 
     const cashIncome = Number(directCash._sum.amount || 0) + Number(splitCash._sum.amount || 0);
 
-    // Approved expenses in period
     const expWhere: Record<string, unknown> = {
+      ...centerFilter,
       expenseDate: { gte: startDate, lte: endDate },
       status: 'APPROVED',
     };
-    if (centerId) expWhere.centerId = centerId;
     const expenses = await prisma.expense.aggregate({
       where: expWhere,
       _sum: { amount: true },
     });
     const totalExpenses = Number(expenses._sum.amount || 0);
 
-    // Approved settlements in period
     const setWhere: Record<string, unknown> = {
+      ...centerFilter,
       settlementDate: { gte: startDate, lte: endDate },
       status: 'APPROVED',
     };
-    if (centerId) setWhere.centerId = centerId;
     const settled = await prisma.settlement.aggregate({
       where: setWhere,
       _sum: { finalAmount: true },

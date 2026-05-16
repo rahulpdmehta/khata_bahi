@@ -1,17 +1,11 @@
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
+import { assertCenterAccess, buildCenterWhereClause } from '../../utils/centerAccess';
 import type { CreateExpenseDto, ExpenseFiltersDto } from './expense.dto';
 
 export class ExpenseService {
   async create(userId: string, role: string, dto: CreateExpenseDto) {
-    if (role !== 'ADMIN') {
-      const userCenter = await prisma.userCenter.findFirst({
-        where: { userId, centerId: dto.centerId },
-      });
-      if (!userCenter) {
-        throw ApiError.forbidden('You do not have access to this center');
-      }
-    }
+    await assertCenterAccess(userId, role, dto.centerId);
 
     const category = await prisma.expenseCategory.findUnique({
       where: { id: dto.categoryId },
@@ -57,26 +51,12 @@ export class ExpenseService {
     return expense;
   }
 
-  async findAll(userId: string, filters: ExpenseFiltersDto) {
+  async findAll(userId: string, role: string, filters: ExpenseFiltersDto) {
     const { centerId, startDate, endDate, categoryId, status, search, sortBy, sortOrder, page, limit } = filters;
 
-    const where: Record<string, unknown> = {};
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { centers: true },
-    });
-
-    if (!user) {
-      throw ApiError.unauthorized('User session invalid. Please log in again.');
-    }
-
-    if (user.role === 'STAFF') {
-      const centerIds = user.centers.map((uc) => uc.centerId);
-      where.centerId = { in: centerIds };
-    } else if (centerId) {
-      where.centerId = centerId as string;
-    }
+    const where: Record<string, unknown> = {
+      ...(await buildCenterWhereClause(userId, role, centerId)),
+    };
 
     if (startDate && endDate) {
       where.expenseDate = {

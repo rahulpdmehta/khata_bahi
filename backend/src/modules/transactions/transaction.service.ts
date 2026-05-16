@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
+import { assertCenterAccess, buildCenterWhereClause } from '../../utils/centerAccess';
 import type { CreateTransactionDto, UpdateTransactionDto, TransactionFiltersDto } from './transaction.dto';
 
 const transactionInclude = {
@@ -17,14 +18,7 @@ const transactionInclude = {
 
 export class TransactionService {
   async create(userId: string, role: string, dto: CreateTransactionDto) {
-    if (role !== 'ADMIN') {
-      const userCenter = await prisma.userCenter.findFirst({
-        where: { userId, centerId: dto.centerId },
-      });
-      if (!userCenter) {
-        throw ApiError.forbidden('You do not have access to this center');
-      }
-    }
+    await assertCenterAccess(userId, role, dto.centerId);
 
     const transactionNumber = `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
@@ -67,18 +61,9 @@ export class TransactionService {
   async findAll(userId: string, role: string, filters: TransactionFiltersDto) {
     const { centerId, startDate, endDate, vehicleTypeId, incomeSourceId, search, sortBy, sortOrder, page, limit } = filters;
 
-    const where: Record<string, unknown> = {};
-
-    if (role === 'STAFF') {
-      const userCenters = await prisma.userCenter.findMany({
-        where: { userId },
-        select: { centerId: true },
-      });
-      const centerIds = userCenters.map((uc) => uc.centerId);
-      where.centerId = { in: centerIds };
-    } else if (centerId) {
-      where.centerId = centerId;
-    }
+    const where: Record<string, unknown> = {
+      ...(await buildCenterWhereClause(userId, role, centerId)),
+    };
 
     if (startDate && endDate) {
       where.transactionDate = {
@@ -127,7 +112,7 @@ export class TransactionService {
     };
   }
 
-  async findById(id: string) {
+  async findById(id: string, userId: string, role: string) {
     const transaction = await prisma.transaction.findUnique({
       where: { id },
       include: transactionInclude,
@@ -136,6 +121,8 @@ export class TransactionService {
     if (!transaction) {
       throw ApiError.notFound('Transaction not found');
     }
+
+    await assertCenterAccess(userId, role, transaction.centerId);
 
     return transaction;
   }

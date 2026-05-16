@@ -10,13 +10,18 @@ const settlementService = new SettlementService();
 export class SettlementController {
   preview = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { centerId, settlementDate } = req.query as { centerId: string; settlementDate: string };
-    const result = await settlementService.preview(centerId, settlementDate);
+    const result = await settlementService.preview(
+      req.user!.userId,
+      req.user!.role,
+      centerId,
+      settlementDate
+    );
     res.json(ApiResponse.success(result));
   });
 
   create = asyncHandler(async (req: AuthRequest, res: Response) => {
     const validatedData = createSettlementSchema.parse(req.body);
-    const result = await settlementService.create(req.user!.userId, validatedData);
+    const result = await settlementService.create(req.user!.userId, req.user!.role, validatedData);
     res.status(201).json(ApiResponse.success(result, 'Settlement created successfully', 201));
   });
 
@@ -27,7 +32,11 @@ export class SettlementController {
   });
 
   findById = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const result = await settlementService.findById(req.params.id);
+    const result = await settlementService.findById(
+      req.params.id,
+      req.user!.userId,
+      req.user!.role
+    );
     res.json(ApiResponse.success(result));
   });
 

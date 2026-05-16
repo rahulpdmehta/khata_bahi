@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
+import { assertCenterAccess, buildCenterWhereClause } from '../../utils/centerAccess';
 import type { CreateSettlementDto, SettlementFiltersDto } from './settlement.dto';
 
 const settlementInclude = {
@@ -19,7 +20,8 @@ const settlementInclude = {
 };
 
 export class SettlementService {
-  async preview(centerId: string, settlementDate: string) {
+  async preview(userId: string, role: string, centerId: string, settlementDate: string) {
+    await assertCenterAccess(userId, role, centerId);
     const date = new Date(settlementDate);
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
@@ -45,7 +47,8 @@ export class SettlementService {
     return { totalIncome, totalExpenses, netAmount: totalIncome - totalExpenses };
   }
 
-  async create(userId: string, dto: CreateSettlementDto) {
+  async create(userId: string, role: string, dto: CreateSettlementDto) {
+    await assertCenterAccess(userId, role, dto.centerId);
     const settlementDate = new Date(dto.settlementDate);
     const startOfDay = new Date(settlementDate);
     startOfDay.setHours(0, 0, 0, 0);
@@ -137,18 +140,9 @@ export class SettlementService {
   async findAll(userId: string, role: string, filters: SettlementFiltersDto) {
     const { centerId, status, startDate, endDate, search, sortBy, sortOrder, page, limit } = filters;
 
-    const where: Record<string, unknown> = {};
-
-    if (role === 'STAFF') {
-      const userCenters = await prisma.userCenter.findMany({
-        where: { userId },
-        select: { centerId: true },
-      });
-      const centerIds = userCenters.map((uc) => uc.centerId);
-      where.centerId = { in: centerIds };
-    } else if (centerId) {
-      where.centerId = centerId;
-    }
+    const where: Record<string, unknown> = {
+      ...(await buildCenterWhereClause(userId, role, centerId)),
+    };
 
     if (status) {
       where.status = status;
@@ -191,7 +185,7 @@ export class SettlementService {
     };
   }
 
-  async findById(id: string) {
+  async findById(id: string, userId: string, role: string) {
     const settlement = await prisma.settlement.findUnique({
       where: { id },
       include: settlementInclude,
@@ -200,6 +194,8 @@ export class SettlementService {
     if (!settlement) {
       throw ApiError.notFound('Settlement not found');
     }
+
+    await assertCenterAccess(userId, role, settlement.centerId);
 
     return settlement;
   }

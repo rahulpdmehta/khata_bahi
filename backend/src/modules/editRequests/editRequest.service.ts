@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
+import { assertCenterAccess } from '../../utils/centerAccess';
 import type { CreateEditRequestDto, EditRequestFiltersDto } from './editRequest.dto';
 
 const editRequestInclude = {
@@ -18,6 +19,7 @@ export class EditRequestService {
     if (dto.resourceType === 'SETTLEMENT' && dto.settlementId) {
       const settlement = await prisma.settlement.findUnique({ where: { id: dto.settlementId } });
       if (!settlement) throw ApiError.notFound('Settlement not found');
+      await assertCenterAccess(userId, user?.role ?? 'STAFF', settlement.centerId);
       if (settlement.userId !== userId && user?.role !== 'ADMIN') {
         throw ApiError.forbidden('You do not own this settlement');
       }
@@ -29,6 +31,7 @@ export class EditRequestService {
     } else if (dto.resourceType === 'EXPENSE' && dto.expenseId) {
       const expense = await prisma.expense.findUnique({ where: { id: dto.expenseId } });
       if (!expense) throw ApiError.notFound('Expense not found');
+      await assertCenterAccess(userId, user?.role ?? 'STAFF', expense.centerId);
       if (expense.userId !== userId && user?.role !== 'ADMIN') {
         throw ApiError.forbidden('You do not own this expense');
       }
@@ -40,6 +43,7 @@ export class EditRequestService {
     } else if (dto.transactionId) {
       const transaction = await prisma.transaction.findUnique({ where: { id: dto.transactionId } });
       if (!transaction) throw ApiError.notFound('Transaction not found');
+      await assertCenterAccess(userId, user?.role ?? 'STAFF', transaction.centerId);
       if (transaction.userId !== userId && user?.role !== 'ADMIN') {
         throw ApiError.forbidden('You do not own this transaction');
       }
@@ -86,9 +90,14 @@ export class EditRequestService {
     return { data, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async findById(id: string) {
+  async findById(id: string, userId: string, role: string) {
     const editRequest = await prisma.editRequest.findUnique({ where: { id }, include: editRequestInclude });
     if (!editRequest) throw ApiError.notFound('Edit request not found');
+
+    if (role === 'STAFF' && editRequest.requestedBy !== userId) {
+      throw ApiError.forbidden('You do not have access to this edit request');
+    }
+
     return editRequest;
   }
 
