@@ -104,14 +104,14 @@ export class CustomerService {
       },
     });
 
-    const total = await prisma.transaction.count({ where: { customerMobile: mobile } });
-
     const agg = await prisma.transaction.aggregate({
       where: { customerMobile: mobile },
       _count: { id: true },
       _sum: { amount: true },
       _max: { transactionDate: true, customerName: true },
     });
+
+    const total = agg._count.id;
 
     return {
       customerMobile: mobile,
