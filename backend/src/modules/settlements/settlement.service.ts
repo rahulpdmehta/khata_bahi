@@ -33,7 +33,7 @@ export class SettlementService {
       _sum: { amount: true },
     });
     const splitCash = await prisma.transactionPayment.aggregate({
-      where: { paymentMode: 'CASH', transaction: { centerId, transactionDate: { gte: start, lte: end } } },
+      where: { paymentMode: 'CASH', transaction: { centerId, transactionDate: { gte: start, lte: end }, paymentMode: 'SPLIT' } },
       _sum: { amount: true },
     });
     const totalIncome = (directCash._sum.amount?.toNumber() ?? 0) + (splitCash._sum.amount?.toNumber() ?? 0);
@@ -86,6 +86,7 @@ export class SettlementService {
         transaction: {
           centerId: dto.centerId,
           transactionDate: { gte: startOfDay, lte: endOfDay },
+          paymentMode: 'SPLIT',
         },
       },
       _sum: { amount: true },

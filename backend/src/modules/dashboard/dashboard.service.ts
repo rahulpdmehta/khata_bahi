@@ -288,7 +288,7 @@ export class DashboardService {
     const splitCash = await prisma.transactionPayment.aggregate({
       where: {
         paymentMode: 'CASH',
-        transaction: txWhere,
+        transaction: { ...txWhere, paymentMode: 'SPLIT' },
       },
       _sum: { amount: true },
     });
