@@ -14,6 +14,7 @@ import settlementRoutes from './modules/settlements/settlement.routes';
 import userRoutes from './modules/users/user.routes';
 import centerRoutes from './modules/centers/center.routes';
 import masterDataRoutes from './modules/masterData/masterData.routes';
+import customerRoutes from './modules/customers/customer.routes';
 
 const app: Application = express();
 
@@ -68,6 +69,7 @@ app.use('/api/v1/settlements', settlementRoutes);
 app.use('/api/v1/admin/users', userRoutes);
 app.use('/api/v1/admin/centers', centerRoutes);
 app.use('/api/v1/master-data', masterDataRoutes);
+app.use('/api/v1/customers', customerRoutes);
 
 // 404 handler
 app.use((_req, res) => {
