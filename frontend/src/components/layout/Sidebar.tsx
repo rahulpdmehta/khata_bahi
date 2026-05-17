@@ -23,6 +23,7 @@ import {
   EnergySavingsLeaf as EcoIcon,
   Logout as LogoutIcon,
   Assessment as AssessmentIcon,
+  PeopleAlt as PeopleAltIcon,
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { logout } from '../../features/auth/authSlice';
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { label: 'Settlements', icon: <AccountBalanceIcon />, path: '/settlements' },
   { label: 'Approvals', icon: <EditNoteIcon />, path: '/edit-requests' },
   { label: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
+  { label: 'Customers', icon: <PeopleAltIcon />, path: '/customers', adminOnly: true },
   { label: 'Management', icon: <ManageIcon />, path: '/admin/users', adminOnly: true },
 ];
 

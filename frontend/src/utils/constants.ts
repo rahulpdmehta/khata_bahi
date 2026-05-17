@@ -14,4 +14,5 @@ export const ROUTES = {
   SETTLEMENTS: '/settlements',
   ADMIN_USERS: '/admin/users',
   ADMIN_CENTERS: '/admin/centers',
+  CUSTOMERS: '/customers',
 } as const;

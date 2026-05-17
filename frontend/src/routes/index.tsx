@@ -38,6 +38,9 @@ const CenterManagementPage = lazy(() =>
 const ReportPage = lazy(() =>
   import('../features/reports/ReportPage').then((m) => ({ default: m.ReportPage }))
 );
+const CustomersPage = lazy(() =>
+  import('../features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage }))
+);
 
 const PageLoader: React.FC = () => (
   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -140,6 +143,18 @@ export const AppRoutes: React.FC = () => {
             element={
               <LayoutRoute>
                 <ReportPage />
+              </LayoutRoute>
+            }
+          />
+
+          {/* Customers — admin only */}
+          <Route
+            path="/customers"
+            element={
+              <LayoutRoute>
+                <AdminRoute>
+                  <CustomersPage />
+                </AdminRoute>
               </LayoutRoute>
             }
           />
