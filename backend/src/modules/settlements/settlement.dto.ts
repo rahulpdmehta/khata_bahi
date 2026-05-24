@@ -4,6 +4,7 @@ export const createSettlementSchema = z.object({
   centerId: z.string().uuid(),
   settlementDate: z.string(),
   carryForwardAmount: z.number().default(0),
+  settledAmount: z.number().min(0).optional(),
   notes: z.string().optional(),
 });
 
