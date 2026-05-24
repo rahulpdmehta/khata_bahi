@@ -116,6 +116,10 @@ export class SettlementService {
     const totalExpenses = expenseAggregate._sum.amount?.toNumber() ?? 0;
     const netAmount = totalIncome - totalExpenses;
     const finalAmount = netAmount + dto.carryForwardAmount;
+    const settledAmount = dto.settledAmount !== undefined
+      ? Math.min(dto.settledAmount, finalAmount)
+      : finalAmount;
+    const remainingAmount = finalAmount - settledAmount;
     const settlementNumber = `SET${Date.now()}`;
 
     const settlement = await prisma.settlement.create({
@@ -129,6 +133,8 @@ export class SettlementService {
         netAmount,
         carryForwardAmount: dto.carryForwardAmount,
         finalAmount,
+        settledAmount,
+        remainingAmount,
         status: 'PENDING',
         notes: dto.notes,
       },
