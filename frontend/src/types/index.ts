@@ -165,6 +165,8 @@ export interface Settlement {
   netAmount: number;
   carryForwardAmount: number;
   finalAmount: number;
+  settledAmount: number;
+  remainingAmount: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   approvedBy?: string;
   notes?: string;
