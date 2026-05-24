@@ -103,6 +103,7 @@ export const SettlementsPage: React.FC = () => {
     centerId: user?.centers?.[0]?.id || '',
     settlementDate: format(new Date(), 'yyyy-MM-dd'),
     carryForwardAmount: '0',
+    settledAmount: '',
     notes: '',
   });
 
@@ -156,14 +157,15 @@ export const SettlementsPage: React.FC = () => {
         totalExpenses: d.totalExpenses ?? 0,
         netAmount: d.netAmount ?? 0,
       });
+      setForm((f) => ({ ...f, settledAmount: '' }));
 
-      // Auto-fill carry forward from last approved settlement's finalAmount
+      // Auto-fill carry forward from last approved settlement's remainingAmount
       if (prevSettlementRes.status === 'fulfilled') {
         const payload = prevSettlementRes.value.data?.data;
         const list = Array.isArray(payload) ? payload : (payload?.data ?? []);
         if (list.length > 0) {
-          const lastFinalAmount = Number(list[0].finalAmount ?? 0);
-          setForm((f) => ({ ...f, carryForwardAmount: String(lastFinalAmount) }));
+          const lastRemaining = Number(list[0].remainingAmount ?? 0);
+          setForm((f) => ({ ...f, carryForwardAmount: String(lastRemaining) }));
         } else {
           setForm((f) => ({ ...f, carryForwardAmount: '0' }));
         }
@@ -177,6 +179,9 @@ export const SettlementsPage: React.FC = () => {
     if (!form.centerId || !preview) return;
     setSubmitting(true);
     try {
+      const finalAmt = preview.netAmount + parseFloat(form.carryForwardAmount || '0');
+      const settledAmt = form.settledAmount !== '' ? parseFloat(form.settledAmount) : undefined;
+
       await dispatch(
         createSettlement({
           ...form,
@@ -184,7 +189,8 @@ export const SettlementsPage: React.FC = () => {
           totalIncome: preview.totalIncome,
           totalExpenses: preview.totalExpenses,
           netAmount: preview.netAmount,
-          finalAmount: preview.netAmount + parseFloat(form.carryForwardAmount || '0'),
+          finalAmount: finalAmt,
+          ...(settledAmt !== undefined && { settledAmount: settledAmt }),
         })
       ).unwrap();
       setSnack({ open: true, msg: 'Settlement submitted successfully!', severity: 'success' });
@@ -193,6 +199,7 @@ export const SettlementsPage: React.FC = () => {
         centerId: user?.centers?.[0]?.id || '',
         settlementDate: format(new Date(), 'yyyy-MM-dd'),
         carryForwardAmount: '0',
+        settledAmount: '',
         notes: '',
       });
     } catch (err: unknown) {
@@ -311,7 +318,7 @@ export const SettlementsPage: React.FC = () => {
                         Settlement Summary
                       </Typography>
                       <Grid container spacing={2}>
-                        <Grid item xs={6} sm={3}>
+                        <Grid item xs={6} sm={2}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="caption" color="text.secondary">Total Income</Typography>
                             <Typography variant="h5" sx={{ fontWeight: 700, color: '#10b981' }}>
@@ -319,7 +326,7 @@ export const SettlementsPage: React.FC = () => {
                             </Typography>
                           </Box>
                         </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid item xs={6} sm={2}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="caption" color="text.secondary">Total Expenses</Typography>
                             <Typography variant="h5" sx={{ fontWeight: 700, color: '#ef4444' }}>
@@ -343,7 +350,7 @@ export const SettlementsPage: React.FC = () => {
                             </Typography>
                           </Box>
                         </Grid>
-                        <Grid item xs={12} sm={2}>
+                        <Grid item xs={6} sm={2}>
                           <Box sx={{ textAlign: 'center', borderLeft: { sm: '1px solid #e2e8f0' }, pl: { sm: 2 } }}>
                             <Typography variant="caption" color="text.secondary">Final Amount</Typography>
                             <Typography variant="h5" sx={{ fontWeight: 800, color: '#000666' }}>
@@ -354,6 +361,36 @@ export const SettlementsPage: React.FC = () => {
                             </Typography>
                           </Box>
                         </Grid>
+                        {(() => {
+                          const finalAmt = preview.netAmount + (parseFloat(form.carryForwardAmount) || 0);
+                          const settledAmt = form.settledAmount !== '' ? Math.min(parseFloat(form.settledAmount) || 0, finalAmt) : finalAmt;
+                          const remainingAmt = finalAmt - settledAmt;
+                          return (
+                            <>
+                              <Grid item xs={6} sm={2}>
+                                <Box sx={{ textAlign: 'center', borderLeft: { sm: '1px solid #e2e8f0' }, pl: { sm: 2 } }}>
+                                  <Typography variant="caption" color="text.secondary">Settled Now</Typography>
+                                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#10b981' }}>
+                                    {formatCurrency(settledAmt)}
+                                  </Typography>
+                                </Box>
+                              </Grid>
+                              <Grid item xs={6} sm={2}>
+                                <Box sx={{ textAlign: 'center' }}>
+                                  <Typography variant="caption" color="text.secondary">Remaining</Typography>
+                                  <Typography variant="h5" sx={{ fontWeight: 800, color: remainingAmt > 0 ? '#f59e0b' : '#94a3b8' }}>
+                                    {formatCurrency(remainingAmt)}
+                                  </Typography>
+                                  {remainingAmt > 0 && (
+                                    <Typography variant="caption" sx={{ color: '#f59e0b', fontSize: '0.68rem' }}>
+                                      carries to next
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Grid>
+                            </>
+                          );
+                        })()}
                       </Grid>
                     </Paper>
                   </Grid>
@@ -372,6 +409,26 @@ export const SettlementsPage: React.FC = () => {
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                       }}
                     />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    {(() => {
+                      const finalAmt = preview.netAmount + (parseFloat(form.carryForwardAmount) || 0);
+                      return (
+                        <TextField
+                          fullWidth
+                          label="Settled Amount"
+                          name="settledAmount"
+                          type="number"
+                          value={form.settledAmount}
+                          onChange={handleFormChange}
+                          helperText={`Leave blank to settle full amount (${formatCurrency(finalAmt)})`}
+                          inputProps={{ min: 0, max: finalAmt, step: 1 }}
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                          }}
+                        />
+                      );
+                    })()}
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
@@ -467,6 +524,12 @@ export const SettlementsPage: React.FC = () => {
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Net</Typography>
                               <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(Number(s.netAmount))}</Typography>
                             </Box>
+                            {Number(s.remainingAmount) > 0 && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>{formatCurrency(Number(s.remainingAmount))}</Typography>
+                              </Box>
+                            )}
                           </Box>
                           <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
                             {isAdmin ? (
@@ -513,17 +576,18 @@ export const SettlementsPage: React.FC = () => {
                           <TableSortLabel active={sort.field === 'netAmount'} direction={sort.field === 'netAmount' ? sort.order : 'desc'} onClick={() => handleSort('netAmount')}>Net Amount</TableSortLabel>
                         </TableCell>
                         <TableCell>Status</TableCell>
+                        <TableCell>Remaining</TableCell>
                         <TableCell align="center">Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {loading
                         ? Array.from({ length: 5 }).map((_, i) => (
-                            <TableRow key={i}>{Array.from({ length: isAdmin ? 8 : 7 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
+                            <TableRow key={i}>{Array.from({ length: isAdmin ? 9 : 8 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
                           ))
                         : settlements.length === 0
                         ? (
-                          <TableRow><TableCell colSpan={isAdmin ? 8 : 7} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
+                          <TableRow><TableCell colSpan={isAdmin ? 9 : 8} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
                         )
                         : settlements.map((s) => {
                             const sc = statusConfig[s.status];
@@ -539,6 +603,15 @@ export const SettlementsPage: React.FC = () => {
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#ef4444' }}>{formatCurrency(Number(s.totalExpenses))}</Typography></TableCell>
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(Number(s.netAmount))}</Typography></TableCell>
                                 <TableCell><Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.7rem' }} /></TableCell>
+                                <TableCell>
+                                  {Number(s.remainingAmount) > 0 ? (
+                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>
+                                      {formatCurrency(Number(s.remainingAmount))}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>
+                                  )}
+                                </TableCell>
                                 <TableCell align="center">
                                   <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                                     {isAdmin ? (
