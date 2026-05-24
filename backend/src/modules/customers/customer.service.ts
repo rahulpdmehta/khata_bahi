@@ -4,11 +4,9 @@ import type { CustomerFiltersDto, CustomerDetailFiltersDto } from './customer.dt
 
 export class CustomerService {
   async findAll(filters: CustomerFiltersDto) {
-    const { search, centerId, startDate, endDate, sortBy, sortOrder, page, limit } = filters;
+    const { search, vehicleNumber, centerId, startDate, endDate, sortBy, sortOrder, page, limit } = filters;
 
-    const txWhere: Record<string, unknown> = {
-      customerMobile: { not: null },
-    };
+    const txWhere: Record<string, unknown> = {};
 
     if (centerId) txWhere.centerId = centerId;
     if (startDate) {
@@ -22,6 +20,19 @@ export class CustomerService {
         ...(txWhere.transactionDate as object | undefined),
         lte: new Date(endDate),
       };
+    }
+
+    // If filtering by vehicle number, pre-fetch matching mobiles
+    if (vehicleNumber) {
+      const rows = await prisma.transaction.findMany({
+        where: { vehicleNumber: { contains: vehicleNumber, mode: 'insensitive' } },
+        select: { customerMobile: true },
+        distinct: ['customerMobile'],
+      });
+      const mobileList = rows.map((r) => r.customerMobile).filter(Boolean) as string[];
+      txWhere.customerMobile = { in: mobileList };
+    } else {
+      txWhere.customerMobile = { not: null };
     }
 
     // Group by mobile to get aggregates
@@ -61,6 +72,22 @@ export class CustomerService {
       }
     }
 
+    // Collect distinct vehicle numbers per customer
+    const vehicleRows = await prisma.transaction.findMany({
+      where: { customerMobile: { in: mobiles }, vehicleNumber: { not: null } },
+      select: { customerMobile: true, vehicleNumber: true },
+      distinct: ['customerMobile', 'vehicleNumber'],
+    });
+
+    const vehicleMap = new Map<string, string[]>();
+    for (const row of vehicleRows) {
+      if (!row.customerMobile || !row.vehicleNumber) continue;
+      const existing = vehicleMap.get(row.customerMobile) ?? [];
+      if (!existing.includes(row.vehicleNumber)) {
+        vehicleMap.set(row.customerMobile, [...existing, row.vehicleNumber]);
+      }
+    }
+
     // Build customer list
     const customers = filtered.map((g) => ({
       customerMobile: g.customerMobile!,
@@ -69,6 +96,7 @@ export class CustomerService {
       totalSpent: Number(g._sum.amount ?? 0),
       lastVisit: g._max.transactionDate?.toISOString().slice(0, 10) ?? null,
       centers: centerMap.get(g.customerMobile!) ?? [],
+      vehicleNumbers: vehicleMap.get(g.customerMobile!) ?? [],
     }));
 
     // Sort

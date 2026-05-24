@@ -22,6 +22,7 @@ interface Customer {
   totalSpent: number;
   lastVisit: string | null;
   centers: string[];
+  vehicleNumbers: string[];
 }
 
 type SortField = 'totalSpent' | 'totalVisits' | 'lastVisit';
@@ -33,6 +34,7 @@ export const CustomersPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [limit] = useState(25);
   const [search, setSearch] = useState('');
+  const [vehicleSearch, setVehicleSearch] = useState('');
   const [centerId, setCenterId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -55,6 +57,7 @@ export const CustomersPage: React.FC = () => {
         page: page + 1, limit, sortBy, sortOrder,
       };
       if (search) params.search = search;
+      if (vehicleSearch) params.vehicleNumber = vehicleSearch;
       if (centerId) params.centerId = centerId;
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
@@ -68,7 +71,7 @@ export const CustomersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, centerId, startDate, endDate, sortBy, sortOrder]);
+  }, [page, limit, search, vehicleSearch, centerId, startDate, endDate, sortBy, sortOrder]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -115,6 +118,14 @@ export const CustomersPage: React.FC = () => {
               sx={{ minWidth: 220, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.85rem' } }}
             />
             <TextField
+              size="small"
+              placeholder="Search vehicle number..."
+              value={vehicleSearch}
+              onChange={(e) => { setVehicleSearch(e.target.value); setPage(0); }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} /></InputAdornment> }}
+              sx={{ minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.85rem' } }}
+            />
+            <TextField
               select size="small" value={centerId}
               onChange={(e) => { setCenterId(e.target.value); setPage(0); }}
               label="Center"
@@ -150,6 +161,7 @@ export const CustomersPage: React.FC = () => {
               <TableRow sx={{ '& th': { bgcolor: '#f8fafc', fontWeight: 700, fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' } }}>
                 <TableCell>Customer</TableCell>
                 <TableCell>Mobile</TableCell>
+                <TableCell>Vehicle #</TableCell>
                 <TableCell>Centers</TableCell>
                 <TableCell sortDirection={sortBy === 'totalVisits' ? sortOrder : false}>
                   <TableSortLabel active={sortBy === 'totalVisits'} direction={sortBy === 'totalVisits' ? sortOrder : 'desc'} onClick={() => handleSort('totalVisits')}>
@@ -172,7 +184,7 @@ export const CustomersPage: React.FC = () => {
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((__, j) => (
+                      {Array.from({ length: 7 }).map((__, j) => (
                         <TableCell key={j}><Skeleton variant="text" /></TableCell>
                       ))}
                     </TableRow>
@@ -180,7 +192,7 @@ export const CustomersPage: React.FC = () => {
                 : customers.length === 0
                 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                       <Typography variant="body2" color="text.secondary">No customers found</Typography>
                     </TableCell>
                   </TableRow>
@@ -202,6 +214,15 @@ export const CustomersPage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ color: '#475569', fontFamily: 'monospace' }}>{c.customerMobile}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {c.vehicleNumbers.length > 0
+                            ? c.vehicleNumbers.map((vn) => (
+                                <Chip key={vn} label={vn} size="small" sx={{ fontSize: '0.68rem', height: 20, bgcolor: '#eff6ff', color: '#1d4ed8', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 600 }} />
+                              ))
+                            : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>

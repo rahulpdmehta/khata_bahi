@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 export const customerFiltersSchema = z.object({
   search: z.string().optional(),
+  vehicleNumber: z.string().optional(),
   centerId: z.string().uuid().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
