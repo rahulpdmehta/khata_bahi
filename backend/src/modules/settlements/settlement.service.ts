@@ -87,7 +87,12 @@ export class SettlementService {
       expectedNext.setDate(expectedNext.getDate() + 1);
       const newDay = new Date(settlementDate);
       newDay.setHours(0, 0, 0, 0);
-      if (newDay > expectedNext) {
+      if (newDay.getTime() !== expectedNext.getTime()) {
+        if (newDay < expectedNext) {
+          throw ApiError.badRequest(
+            'Cannot create a settlement for a date before or equal to an already settled date.'
+          );
+        }
         const pendingFrom = expectedNext.toISOString().slice(0, 10);
         throw ApiError.badRequest(
           `Pending settlements exist from ${pendingFrom}. Use batch creation to settle all pending days first.`
@@ -206,8 +211,7 @@ export class SettlementService {
     }
 
     const settlements = await prisma.$transaction(async (tx) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const created: any[] = [];
+      const created: Awaited<ReturnType<typeof tx.settlement.create>>[] = [];
       for (const day of days) {
         const settlementDate = new Date(day.date);
         const settlementNumber = `SET${day.date.replace(/-/g, '')}${Date.now()}`;
@@ -233,6 +237,11 @@ export class SettlementService {
         created.push(settlement);
       }
       return created;
+    }).catch((err: { code?: string; message?: string }) => {
+      if (err.code === 'P2002') {
+        throw ApiError.conflict('One or more days in the batch already have settlements. Please refresh and try again.');
+      }
+      throw err;
     });
 
     return settlements;
