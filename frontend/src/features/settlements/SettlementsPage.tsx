@@ -45,10 +45,21 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
   EditNote as EditNoteIcon,
+  LockOutlined as LockIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { fetchSettlements, createSettlement, approveSettlement, rejectSettlement, deleteSettlement } from './settlementSlice';
+import {
+  fetchSettlements,
+  createSettlement,
+  approveSettlement,
+  rejectSettlement,
+  deleteSettlement,
+  fetchBatchPreview,
+  createBatchSettlements,
+  clearBatchPreview,
+  type BatchPreviewDay,
+} from './settlementSlice';
 import { fetchCenters } from '../admin/centerSlice';
 import { createEditRequest } from '../editRequests/editRequestSlice';
 import type { Settlement } from '../../types';
@@ -69,7 +80,7 @@ export const SettlementsPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { settlements, loading, pagination } = useAppSelector((state) => state.settlements);
+  const { settlements, loading, pagination, batchPreviewDays, batchPreviewLoading } = useAppSelector((state) => state.settlements);
   const { centers } = useAppSelector((state) => state.centers);
   const isAdmin = user?.role === 'ADMIN';
 
@@ -90,7 +101,7 @@ export const SettlementsPage: React.FC = () => {
   const [rejectNotes, setRejectNotes] = useState('');
   const [editRequestSettlement, setEditRequestSettlement] = useState<Settlement | null>(null);
   const [editRequestReason, setEditRequestReason] = useState('');
-  const [editRequestFields, setEditRequestFields] = useState({ carryForwardAmount: '', settlementDate: '', notes: '' });
+  const [editRequestFields, setEditRequestFields] = useState({ settlementDate: '', notes: '' });
   const [editRequestSubmitting, setEditRequestSubmitting] = useState(false);
 
   const handleSort = (field: 'settlementDate' | 'totalIncome' | 'netAmount') => {
@@ -99,24 +110,46 @@ export const SettlementsPage: React.FC = () => {
   };
   const [snack, setSnack] = useState({ open: false, msg: '', severity: 'success' as 'success' | 'error' });
 
-  const [form, setForm] = useState({
+  // Create tab state
+  const [createForm, setCreateForm] = useState({
     centerId: user?.centers?.[0]?.id || '',
-    settlementDate: format(new Date(), 'yyyy-MM-dd'),
-    carryForwardAmount: '0',
-    settledAmount: '',
+    endDate: format(new Date(), 'yyyy-MM-dd'),
     notes: '',
   });
-
-  const [preview, setPreview] = useState<{
-    totalIncome: number;
-    totalExpenses: number;
-    netAmount: number;
-  } | null>(null);
+  const [lastSettledDate, setLastSettledDate] = useState<string | null>(null);
+  const [singleSettledAmount, setSingleSettledAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isAdmin) dispatch(fetchCenters());
   }, [dispatch, isAdmin]);
+
+  useEffect(() => {
+    if (!createForm.centerId) {
+      setLastSettledDate(null);
+      return;
+    }
+    import('../../utils/apiClient').then(({ apiClient }) => {
+      apiClient
+        .get('/settlements', {
+          params: {
+            centerId: createForm.centerId,
+            sortBy: 'settlementDate',
+            sortOrder: 'desc',
+            limit: 1,
+            page: 1,
+          },
+        })
+        .then((res) => {
+          const payload = res.data?.data;
+          const list = Array.isArray(payload) ? payload : (payload?.data ?? []);
+          setLastSettledDate(list.length > 0 ? list[0].settlementDate.slice(0, 10) : null);
+        })
+        .catch(() => setLastSettledDate(null));
+    });
+    dispatch(clearBatchPreview());
+    setSingleSettledAmount('');
+  }, [createForm.centerId, dispatch]);
 
   useEffect(() => {
     const params: Record<string, unknown> = {
@@ -133,77 +166,65 @@ export const SettlementsPage: React.FC = () => {
     dispatch(fetchSettlements(params));
   }, [dispatch, page, rowsPerPage, statusFilter, centerFilter, dateFrom, dateTo, search, sort]);
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const handlePreviewPendingDays = () => {
+    if (!createForm.centerId || !createForm.endDate) return;
+    setSingleSettledAmount('');
+    dispatch(fetchBatchPreview({ centerId: createForm.centerId, endDate: createForm.endDate }));
   };
 
-  const handleCalculate = async () => {
-    if (!form.centerId || !form.settlementDate) return;
-    try {
-      const { apiClient } = await import('../../utils/apiClient');
-      const [previewRes, prevSettlementRes] = await Promise.allSettled([
-        apiClient.get('/settlements/preview', {
-          params: { centerId: form.centerId, settlementDate: form.settlementDate },
-        }),
-        apiClient.get('/settlements', {
-          params: { centerId: form.centerId, status: 'APPROVED', sortBy: 'settlementDate', sortOrder: 'desc', limit: 1, page: 1 },
-        }),
-      ]);
-
-      if (previewRes.status === 'rejected') throw new Error('Preview failed');
-      const d = previewRes.value.data?.data || previewRes.value.data;
-      setPreview({
-        totalIncome: d.totalIncome ?? 0,
-        totalExpenses: d.totalExpenses ?? 0,
-        netAmount: d.netAmount ?? 0,
-      });
-      setForm((f) => ({ ...f, settledAmount: '' }));
-
-      // Auto-fill carry forward from last approved settlement's remainingAmount
-      if (prevSettlementRes.status === 'fulfilled') {
-        const payload = prevSettlementRes.value.data?.data;
-        const list = Array.isArray(payload) ? payload : (payload?.data ?? []);
-        if (list.length > 0) {
-          const lastRemaining = Number(list[0].remainingAmount ?? 0);
-          setForm((f) => ({ ...f, carryForwardAmount: String(lastRemaining) }));
-        } else {
-          setForm((f) => ({ ...f, carryForwardAmount: '0' }));
-        }
-      }
-    } catch {
-      setSnack({ open: true, msg: 'Failed to calculate settlement', severity: 'error' });
-    }
-  };
-
-  const handleSubmitSettlement = async () => {
-    if (!form.centerId || !preview) return;
+  const handleSingleDaySubmit = async () => {
+    if (!batchPreviewDays || batchPreviewDays.length !== 1) return;
+    const day = batchPreviewDays[0];
     setSubmitting(true);
     try {
-      const finalAmt = preview.netAmount + parseFloat(form.carryForwardAmount || '0');
-      const settledAmt = form.settledAmount !== '' ? parseFloat(form.settledAmount) : undefined;
-
+      const settledAmt = singleSettledAmount !== '' ? parseFloat(singleSettledAmount) : undefined;
       await dispatch(
         createSettlement({
-          ...form,
-          carryForwardAmount: parseFloat(form.carryForwardAmount),
-          totalIncome: preview.totalIncome,
-          totalExpenses: preview.totalExpenses,
-          netAmount: preview.netAmount,
-          finalAmount: finalAmt,
+          centerId: createForm.centerId,
+          settlementDate: day.date,
+          notes: createForm.notes || undefined,
           ...(settledAmt !== undefined && { settledAmount: settledAmt }),
         })
       ).unwrap();
       setSnack({ open: true, msg: 'Settlement submitted successfully!', severity: 'success' });
-      setPreview(null);
-      setForm({
-        centerId: user?.centers?.[0]?.id || '',
-        settlementDate: format(new Date(), 'yyyy-MM-dd'),
-        carryForwardAmount: '0',
-        settledAmount: '',
-        notes: '',
-      });
+      dispatch(clearBatchPreview());
+      setSingleSettledAmount('');
+      setCreateForm((f) => ({ ...f, notes: '' }));
+      setLastSettledDate(day.date);
     } catch (err: unknown) {
-      setSnack({ open: true, msg: typeof err === 'string' ? err : 'Failed to submit settlement', severity: 'error' });
+      setSnack({
+        open: true,
+        msg: typeof err === 'string' ? err : 'Failed to submit settlement',
+        severity: 'error',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBatchSubmit = async () => {
+    if (!batchPreviewDays || batchPreviewDays.length <= 1) return;
+    setSubmitting(true);
+    try {
+      await dispatch(
+        createBatchSettlements({
+          centerId: createForm.centerId,
+          endDate: createForm.endDate,
+          notes: createForm.notes || undefined,
+        })
+      ).unwrap();
+      const count = batchPreviewDays.length;
+      setSnack({ open: true, msg: `${count} settlement(s) submitted successfully!`, severity: 'success' });
+      dispatch(clearBatchPreview());
+      setSingleSettledAmount('');
+      setCreateForm((f) => ({ ...f, notes: '' }));
+      setLastSettledDate(createForm.endDate);
+    } catch (err: unknown) {
+      setSnack({
+        open: true,
+        msg: typeof err === 'string' ? err : 'Failed to submit settlements',
+        severity: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -269,14 +290,16 @@ export const SettlementsPage: React.FC = () => {
         {tab === 0 && (
           <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
             <Grid container spacing={3}>
+              {/* Center selector */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   select
                   label="Center *"
-                  name="centerId"
-                  value={form.centerId}
-                  onChange={handleFormChange}
+                  value={createForm.centerId}
+                  onChange={(e) => {
+                    setCreateForm((f) => ({ ...f, centerId: e.target.value }));
+                  }}
                 >
                   {(isAdmin ? centers : (user?.centers || [])).map((c) => (
                     <MenuItem key={c.id} value={c.id}>
@@ -285,179 +308,261 @@ export const SettlementsPage: React.FC = () => {
                   ))}
                 </TextField>
               </Grid>
+
+              {/* End date selector */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Settlement Date *"
-                  name="settlementDate"
+                  label="Settle Up To *"
                   type="date"
-                  value={form.settlementDate}
-                  onChange={handleFormChange}
+                  value={createForm.endDate}
+                  onChange={(e) => {
+                    setCreateForm((f) => ({ ...f, endDate: e.target.value }));
+                    dispatch(clearBatchPreview());
+                  }}
                   InputLabelProps={{ shrink: true }}
+                  helperText={
+                    lastSettledDate
+                      ? `Last settled: ${fmtDate(lastSettledDate)}`
+                      : 'No settlements yet for this center'
+                  }
                 />
               </Grid>
+
+              {/* Preview button */}
               <Grid item xs={12}>
                 <Button
                   variant="outlined"
-                  onClick={handleCalculate}
-                  disabled={!form.centerId}
-                  startIcon={<AccountBalanceIcon />}
+                  onClick={handlePreviewPendingDays}
+                  disabled={!createForm.centerId || batchPreviewLoading}
+                  startIcon={
+                    batchPreviewLoading ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <AccountBalanceIcon />
+                    )
+                  }
                 >
-                  Calculate Settlement
+                  {batchPreviewLoading ? 'Loading...' : 'Preview Pending Days'}
                 </Button>
               </Grid>
 
-              {preview && (
+              {/* Results area */}
+              {batchPreviewDays !== null && (
                 <>
-                  <Grid item xs={12}>
-                    <Paper
-                      variant="outlined"
-                      sx={{ p: 3, borderRadius: '12px', backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
-                    >
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-                        Settlement Summary
-                      </Typography>
-                      <Grid container spacing={2}>
-                        <Grid item xs={6} sm={2}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary">Total Income</Typography>
-                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#10b981' }}>
-                              {formatCurrency(preview.totalIncome)}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={2}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary">Total Expenses</Typography>
-                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#ef4444' }}>
-                              {formatCurrency(preview.totalExpenses)}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={2}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary">Net Amount</Typography>
-                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#6366f1' }}>
-                              {formatCurrency(preview.netAmount)}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={2}>
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary">Carry Forward</Typography>
-                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                              {formatCurrency(parseFloat(form.carryForwardAmount) || 0)}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={2}>
-                          <Box sx={{ textAlign: 'center', borderLeft: { sm: '1px solid #e2e8f0' }, pl: { sm: 2 } }}>
-                            <Typography variant="caption" color="text.secondary">Final Amount</Typography>
-                            <Typography variant="h5" sx={{ fontWeight: 800, color: '#000666' }}>
-                              {formatCurrency(preview.netAmount + (parseFloat(form.carryForwardAmount) || 0))}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.68rem' }}>
-                              Net + Carry Forward
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        {(() => {
-                          const finalAmt = preview.netAmount + (parseFloat(form.carryForwardAmount) || 0);
-                          const settledAmt = form.settledAmount !== '' ? Math.min(parseFloat(form.settledAmount) || 0, finalAmt) : finalAmt;
-                          const remainingAmt = finalAmt - settledAmt;
-                          return (
-                            <>
-                              <Grid item xs={6} sm={2}>
-                                <Box sx={{ textAlign: 'center', borderLeft: { sm: '1px solid #e2e8f0' }, pl: { sm: 2 } }}>
-                                  <Typography variant="caption" color="text.secondary">Settled Now</Typography>
-                                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#10b981' }}>
-                                    {formatCurrency(settledAmt)}
-                                  </Typography>
-                                </Box>
-                              </Grid>
-                              <Grid item xs={6} sm={2}>
+                  {batchPreviewDays.length === 0 ? (
+                    <Grid item xs={12}>
+                      <Alert severity="success">
+                        All caught up! No pending settlements for this date range.
+                      </Alert>
+                    </Grid>
+                  ) : batchPreviewDays.length === 1 ? (
+                    /* Single-day form — supports partial settlement */
+                    <>
+                      <Grid item xs={12}>
+                        <Paper
+                          variant="outlined"
+                          sx={{ p: 3, borderRadius: '12px', backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
+                        >
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
+                            Settlement Summary — {fmtDate(batchPreviewDays[0].date)}
+                          </Typography>
+                          <Grid container spacing={2}>
+                            {[
+                              { label: 'Total Income', value: batchPreviewDays[0].totalIncome, color: '#10b981' },
+                              { label: 'Total Expenses', value: batchPreviewDays[0].totalExpenses, color: '#ef4444' },
+                              { label: 'Net Amount', value: batchPreviewDays[0].netAmount, color: '#6366f1' },
+                              { label: 'Carry Forward', value: batchPreviewDays[0].carryForwardAmount, color: '#f59e0b' },
+                              { label: 'Final Amount', value: batchPreviewDays[0].finalAmount, color: '#000666' },
+                            ].map(({ label, value, color }) => (
+                              <Grid item xs={6} sm={2} key={label}>
                                 <Box sx={{ textAlign: 'center' }}>
-                                  <Typography variant="caption" color="text.secondary">Remaining</Typography>
-                                  <Typography variant="h5" sx={{ fontWeight: 800, color: remainingAmt > 0 ? '#f59e0b' : '#94a3b8' }}>
-                                    {formatCurrency(remainingAmt)}
+                                  <Typography variant="caption" color="text.secondary">{label}</Typography>
+                                  <Typography variant="h5" sx={{ fontWeight: 700, color }}>
+                                    {formatCurrency(Number(value))}
                                   </Typography>
-                                  {remainingAmt > 0 && (
-                                    <Typography variant="caption" sx={{ color: '#f59e0b', fontSize: '0.68rem' }}>
-                                      carries to next
-                                    </Typography>
-                                  )}
                                 </Box>
                               </Grid>
-                            </>
+                            ))}
+                            <Grid item xs={12}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                <LockIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
+                                <Typography variant="caption" color="text.secondary">
+                                  Carry forward is auto-set from previous settlement's remaining amount
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        </Paper>
+                      </Grid>
+
+                      {/* Settled amount for partial settlement */}
+                      <Grid item xs={12} sm={6}>
+                        {(() => {
+                          const finalAmt = batchPreviewDays[0].finalAmount;
+                          return (
+                            <TextField
+                              fullWidth
+                              label="Settled Amount"
+                              type="number"
+                              value={singleSettledAmount}
+                              onChange={(e) => setSingleSettledAmount(e.target.value)}
+                              helperText={`Leave blank to settle full amount (${formatCurrency(finalAmt)})`}
+                              inputProps={{ min: 0, max: finalAmt, step: 1 }}
+                              InputProps={{
+                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                              }}
+                            />
                           );
                         })()}
                       </Grid>
-                    </Paper>
-                  </Grid>
 
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Carry Forward Amount"
-                      name="carryForwardAmount"
-                      type="number"
-                      value={form.carryForwardAmount}
-                      onChange={handleFormChange}
-                      helperText="Auto-filled from last approved settlement — edit if needed"
-                      inputProps={{ min: 0 }}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    {(() => {
-                      const finalAmt = preview.netAmount + (parseFloat(form.carryForwardAmount) || 0);
-                      return (
+                      <Grid item xs={12} sm={6}>
                         <TextField
                           fullWidth
-                          label="Settled Amount"
-                          name="settledAmount"
-                          type="number"
-                          value={form.settledAmount}
-                          onChange={handleFormChange}
-                          helperText={`Leave blank to settle full amount (${formatCurrency(finalAmt)})`}
-                          inputProps={{ min: 0, max: finalAmt, step: 1 }}
-                          InputProps={{
-                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          }}
+                          label="Notes (optional)"
+                          value={createForm.notes}
+                          onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
+                          multiline
+                          rows={2}
                         />
-                      );
-                    })()}
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Notes (optional)"
-                      name="notes"
-                      value={form.notes}
-                      onChange={handleFormChange}
-                      multiline
-                      rows={2}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                      <Button variant="outlined" onClick={() => setPreview(null)}>
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="contained"
-                        onClick={handleSubmitSettlement}
-                        disabled={submitting}
-                        startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <AddIcon />}
-                        sx={{ minWidth: 160 }}
-                      >
-                        {submitting ? 'Submitting...' : 'Submit Settlement'}
-                      </Button>
-                    </Box>
-                  </Grid>
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                          <Button variant="outlined" onClick={() => dispatch(clearBatchPreview())}>
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="contained"
+                            onClick={handleSingleDaySubmit}
+                            disabled={submitting}
+                            startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <AddIcon />}
+                            sx={{ minWidth: 160 }}
+                          >
+                            {submitting ? 'Submitting...' : 'Submit Settlement'}
+                          </Button>
+                        </Box>
+                      </Grid>
+                    </>
+                  ) : (
+                    /* Multi-day batch table */
+                    <>
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                          Pending Settlements ({fmtDate(batchPreviewDays[0].date)} – {fmtDate(batchPreviewDays[batchPreviewDays.length - 1].date)})
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+                          <LockIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
+                          <Typography variant="caption" color="text.secondary">
+                            Carry forward is auto-set from previous settlement. All days fully settled.
+                          </Typography>
+                        </Box>
+                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '12px' }}>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow sx={{ backgroundColor: '#f8fafc' }}>
+                                <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                                <TableCell sx={{ fontWeight: 600 }} align="right">Income</TableCell>
+                                <TableCell sx={{ fontWeight: 600 }} align="right">Expenses</TableCell>
+                                <TableCell sx={{ fontWeight: 600 }} align="right">Net</TableCell>
+                                <TableCell sx={{ fontWeight: 600 }} align="right">
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                                    <LockIcon sx={{ fontSize: 13, color: '#94a3b8' }} />
+                                    Carry Fwd
+                                  </Box>
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 600 }} align="right">Final</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {batchPreviewDays.map((day: BatchPreviewDay) => (
+                                <TableRow key={day.date} hover>
+                                  <TableCell>{fmtDate(day.date)}</TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="body2" sx={{ color: '#10b981', fontWeight: 600 }}>
+                                      {formatCurrency(day.totalIncome)}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="body2" sx={{ color: '#ef4444', fontWeight: 600 }}>
+                                      {formatCurrency(day.totalExpenses)}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                      {formatCurrency(day.netAmount)}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+                                      {formatCurrency(day.carryForwardAmount)}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                                      {formatCurrency(day.finalAmount)}
+                                    </Typography>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {/* Totals row */}
+                              <TableRow sx={{ backgroundColor: '#f8fafc' }}>
+                                <TableCell sx={{ fontWeight: 700 }}>Total ({batchPreviewDays.length} days)</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: '#10b981' }}>
+                                  {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.totalIncome, 0))}
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: '#ef4444' }}>
+                                  {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.totalExpenses, 0))}
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                                  {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.netAmount, 0))}
+                                </TableCell>
+                                <TableCell align="right" sx={{ color: '#94a3b8', fontWeight: 700 }}>
+                                  {formatCurrency(batchPreviewDays[0].carryForwardAmount)}
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                                  {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.finalAmount, 0))}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Grid>
+
+                      <Grid item xs={12} sm={8}>
+                        <TextField
+                          fullWidth
+                          label="Notes (optional — applied to all settlements)"
+                          value={createForm.notes}
+                          onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
+                          multiline
+                          rows={2}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                          <Button variant="outlined" onClick={() => dispatch(clearBatchPreview())}>
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="contained"
+                            onClick={handleBatchSubmit}
+                            disabled={submitting}
+                            startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <AddIcon />}
+                            sx={{ minWidth: 200 }}
+                          >
+                            {submitting
+                              ? 'Submitting...'
+                              : `Create ${batchPreviewDays.length} Settlements`}
+                          </Button>
+                        </Box>
+                      </Grid>
+                    </>
+                  )}
                 </>
               )}
             </Grid>
@@ -543,7 +648,7 @@ export const SettlementsPage: React.FC = () => {
                                 <Tooltip title="Delete"><IconButton size="small" onClick={() => setDeleteId(s.id)} sx={{ color: '#ef4444' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                               </>
                             ) : (
-                              <Tooltip title="Request Edit"><IconButton size="small" onClick={() => { setEditRequestSettlement(s); setEditRequestReason(''); setEditRequestFields({ carryForwardAmount: String(s.carryForwardAmount ?? 0), settlementDate: s.settlementDate ? s.settlementDate.slice(0, 10) : '', notes: s.notes || '' }); }} sx={{ color: '#f59e0b' }}><EditNoteIcon fontSize="small" /></IconButton></Tooltip>
+                              <Tooltip title="Request Edit"><IconButton size="small" onClick={() => { setEditRequestSettlement(s); setEditRequestReason(''); setEditRequestFields({ settlementDate: s.settlementDate ? s.settlementDate.slice(0, 10) : '', notes: s.notes || '' }); }} sx={{ color: '#f59e0b' }}><EditNoteIcon fontSize="small" /></IconButton></Tooltip>
                             )}
                           </Box>
                         </Box>
@@ -625,7 +730,7 @@ export const SettlementsPage: React.FC = () => {
                                         <Tooltip title="Delete"><IconButton size="small" onClick={() => setDeleteId(s.id)} sx={{ color: '#ef4444' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                                       </>
                                     ) : (
-                                      <Tooltip title="Request Edit"><IconButton size="small" onClick={() => { setEditRequestSettlement(s); setEditRequestReason(''); setEditRequestFields({ carryForwardAmount: String(s.carryForwardAmount ?? 0), settlementDate: s.settlementDate ? s.settlementDate.slice(0, 10) : '', notes: s.notes || '' }); }} sx={{ color: '#f59e0b' }}><EditNoteIcon fontSize="small" /></IconButton></Tooltip>
+                                      <Tooltip title="Request Edit"><IconButton size="small" onClick={() => { setEditRequestSettlement(s); setEditRequestReason(''); setEditRequestFields({ settlementDate: s.settlementDate ? s.settlementDate.slice(0, 10) : '', notes: s.notes || '' }); }} sx={{ color: '#f59e0b' }}><EditNoteIcon fontSize="small" /></IconButton></Tooltip>
                                     )}
                                   </Box>
                                 </TableCell>
@@ -653,7 +758,7 @@ export const SettlementsPage: React.FC = () => {
             Update the fields you want changed. Only modified fields will be sent for approval.
           </Alert>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Settlement Date"
@@ -661,17 +766,6 @@ export const SettlementsPage: React.FC = () => {
                 value={editRequestFields.settlementDate}
                 onChange={(e) => setEditRequestFields((f) => ({ ...f, settlementDate: e.target.value }))}
                 InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Carry Forward Amount"
-                type="number"
-                value={editRequestFields.carryForwardAmount}
-                onChange={(e) => setEditRequestFields((f) => ({ ...f, carryForwardAmount: e.target.value }))}
-                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
-                inputProps={{ min: 0, step: 0.01 }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -712,8 +806,6 @@ export const SettlementsPage: React.FC = () => {
                 const origDate = editRequestSettlement.settlementDate?.slice(0, 10) || '';
                 if (editRequestFields.settlementDate !== origDate)
                   proposedChanges.settlementDate = editRequestFields.settlementDate;
-                if (Number(editRequestFields.carryForwardAmount) !== Number(editRequestSettlement.carryForwardAmount ?? 0))
-                  proposedChanges.carryForwardAmount = Number(editRequestFields.carryForwardAmount);
                 if (editRequestFields.notes !== (editRequestSettlement.notes || ''))
                   proposedChanges.notes = editRequestFields.notes;
                 await dispatch(createEditRequest({
