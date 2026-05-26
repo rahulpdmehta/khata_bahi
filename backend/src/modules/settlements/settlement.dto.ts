@@ -3,8 +3,18 @@ import { z } from 'zod';
 export const createSettlementSchema = z.object({
   centerId: z.string().uuid(),
   settlementDate: z.string(),
-  carryForwardAmount: z.number().default(0),
   settledAmount: z.number().min(0).optional(),
+  notes: z.string().optional(),
+});
+
+export const batchPreviewQuerySchema = z.object({
+  centerId: z.string().uuid(),
+  endDate: z.string(),
+});
+
+export const createBatchSettlementSchema = z.object({
+  centerId: z.string().uuid(),
+  endDate: z.string(),
   notes: z.string().optional(),
 });
 
@@ -21,4 +31,6 @@ export const settlementFiltersSchema = z.object({
 });
 
 export type CreateSettlementDto = z.infer<typeof createSettlementSchema>;
+export type BatchPreviewQueryDto = z.infer<typeof batchPreviewQuerySchema>;
+export type CreateBatchSettlementDto = z.infer<typeof createBatchSettlementSchema>;
 export type SettlementFiltersDto = z.infer<typeof settlementFiltersSchema>;
