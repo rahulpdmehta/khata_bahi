@@ -177,7 +177,8 @@ export const SettlementsPage: React.FC = () => {
     const day = batchPreviewDays[0];
     setSubmitting(true);
     try {
-      const settledAmt = singleSettledAmount !== '' ? parseFloat(singleSettledAmount) : undefined;
+      const parsedSettled = parseFloat(singleSettledAmount);
+      const settledAmt = singleSettledAmount !== '' && !isNaN(parsedSettled) ? parsedSettled : undefined;
       await dispatch(
         createSettlement({
           centerId: createForm.centerId,
@@ -206,19 +207,20 @@ export const SettlementsPage: React.FC = () => {
     if (!batchPreviewDays || batchPreviewDays.length <= 1) return;
     setSubmitting(true);
     try {
-      await dispatch(
+      const result = await dispatch(
         createBatchSettlements({
           centerId: createForm.centerId,
           endDate: createForm.endDate,
           notes: createForm.notes || undefined,
         })
       ).unwrap();
-      const count = batchPreviewDays.length;
+      const count = result.length;
+      const lastDate = batchPreviewDays[batchPreviewDays.length - 1].date;
       setSnack({ open: true, msg: `${count} settlement(s) submitted successfully!`, severity: 'success' });
       dispatch(clearBatchPreview());
       setSingleSettledAmount('');
       setCreateForm((f) => ({ ...f, notes: '' }));
-      setLastSettledDate(createForm.endDate);
+      setLastSettledDate(lastDate);
     } catch (err: unknown) {
       setSnack({
         open: true,
@@ -299,6 +301,7 @@ export const SettlementsPage: React.FC = () => {
                   value={createForm.centerId}
                   onChange={(e) => {
                     setCreateForm((f) => ({ ...f, centerId: e.target.value }));
+                    dispatch(clearBatchPreview());
                   }}
                 >
                   {(isAdmin ? centers : (user?.centers || [])).map((c) => (

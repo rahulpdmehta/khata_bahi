@@ -145,6 +145,7 @@ const settlementSlice = createSlice({
     },
     clearBatchPreview: (state) => {
       state.batchPreviewDays = null;
+      state.batchPreviewLoading = false;
     },
   },
   extraReducers: (builder) => {
