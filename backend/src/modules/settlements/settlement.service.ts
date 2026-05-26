@@ -138,6 +138,12 @@ export class SettlementService {
     const endDateObj = new Date(endDate);
     endDateObj.setHours(0, 0, 0, 0);
 
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (endDateObj > today) {
+      throw ApiError.badRequest('Cannot create settlements for future dates');
+    }
+
     const lastSettlement = await prisma.settlement.findFirst({
       where: { centerId },
       orderBy: { settlementDate: 'desc' },

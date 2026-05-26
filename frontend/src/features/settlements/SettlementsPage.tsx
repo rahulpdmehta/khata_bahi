@@ -337,7 +337,7 @@ export const SettlementsPage: React.FC = () => {
                 <Button
                   variant="outlined"
                   onClick={handlePreviewPendingDays}
-                  disabled={!createForm.centerId || batchPreviewLoading}
+                  disabled={!createForm.centerId || !createForm.endDate || batchPreviewLoading}
                   startIcon={
                     batchPreviewLoading ? (
                       <CircularProgress size={18} color="inherit" />
@@ -355,9 +355,16 @@ export const SettlementsPage: React.FC = () => {
                 <>
                   {batchPreviewDays.length === 0 ? (
                     <Grid item xs={12}>
-                      <Alert severity="success">
-                        All caught up! No pending settlements for this date range.
-                      </Alert>
+                      {/* Check if endDate is before or equal to the last settled date */}
+                      {lastSettledDate && createForm.endDate <= lastSettledDate ? (
+                        <Alert severity="warning">
+                          The selected date ({fmtDate(createForm.endDate)}) is on or before the last settlement ({fmtDate(lastSettledDate)}). Choose a later date.
+                        </Alert>
+                      ) : (
+                        <Alert severity="success">
+                          All caught up! No pending settlements up to {fmtDate(createForm.endDate)}.
+                        </Alert>
+                      )}
                     </Grid>
                   ) : batchPreviewDays.length === 1 ? (
                     /* Single-day form — supports partial settlement */
