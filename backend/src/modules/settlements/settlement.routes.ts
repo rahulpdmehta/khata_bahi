@@ -7,6 +7,8 @@ const router = Router();
 const settlementController = new SettlementController();
 
 router.get('/preview', authenticate, settlementController.preview);
+router.get('/batch-preview', authenticate, settlementController.batchPreview);
+router.post('/batch', authenticate, settlementController.createBatch);
 router.post('/', authenticate, settlementController.create);
 router.get('/', authenticate, settlementController.findAll);
 router.get('/:id', authenticate, settlementController.findById);
