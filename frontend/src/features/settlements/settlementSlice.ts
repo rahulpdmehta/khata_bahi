@@ -2,11 +2,22 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { apiClient } from '../../utils/apiClient';
 import type { Settlement, ApiResponse } from '../../types';
 
+export interface BatchPreviewDay {
+  date: string;
+  totalIncome: number;
+  totalExpenses: number;
+  netAmount: number;
+  carryForwardAmount: number;
+  finalAmount: number;
+}
+
 interface SettlementState {
   settlements: Settlement[];
   loading: boolean;
   error: string | null;
   pagination: { total: number; page: number; limit: number; totalPages: number } | null;
+  batchPreviewDays: BatchPreviewDay[] | null;
+  batchPreviewLoading: boolean;
 }
 
 const initialState: SettlementState = {
@@ -14,6 +25,8 @@ const initialState: SettlementState = {
   loading: false,
   error: null,
   pagination: null,
+  batchPreviewDays: null,
+  batchPreviewLoading: false,
 };
 
 export const fetchSettlements = createAsyncThunk(
@@ -32,6 +45,22 @@ export const fetchSettlements = createAsyncThunk(
   }
 );
 
+export const fetchBatchPreview = createAsyncThunk(
+  'settlements/fetchBatchPreview',
+  async ({ centerId, endDate }: { centerId: string; endDate: string }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get('/settlements/batch-preview', {
+        params: { centerId, endDate },
+      });
+      const data = response.data?.data;
+      return Array.isArray(data) ? (data as BatchPreviewDay[]) : [];
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return rejectWithValue((error as any).response?.data?.message || 'Failed to fetch batch preview');
+    }
+  }
+);
+
 export const createSettlement = createAsyncThunk(
   'settlements/createSettlement',
   async (data: Record<string, unknown>, { rejectWithValue }) => {
@@ -41,6 +70,23 @@ export const createSettlement = createAsyncThunk(
     } catch (error: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return rejectWithValue((error as any).response?.data?.message || 'Failed to create settlement');
+    }
+  }
+);
+
+export const createBatchSettlements = createAsyncThunk(
+  'settlements/createBatchSettlements',
+  async (
+    data: { centerId: string; endDate: string; notes?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await apiClient.post<ApiResponse<Settlement[]>>('/settlements/batch', data);
+      const result = response.data.data;
+      return Array.isArray(result) ? result : [];
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return rejectWithValue((error as any).response?.data?.message || 'Failed to create batch settlements');
     }
   }
 );
@@ -97,6 +143,9 @@ const settlementSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    clearBatchPreview: (state) => {
+      state.batchPreviewDays = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -113,6 +162,18 @@ const settlementSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(fetchBatchPreview.pending, (state) => {
+        state.batchPreviewLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchBatchPreview.fulfilled, (state, action) => {
+        state.batchPreviewLoading = false;
+        state.batchPreviewDays = action.payload;
+      })
+      .addCase(fetchBatchPreview.rejected, (state, action) => {
+        state.batchPreviewLoading = false;
+        state.error = action.payload as string;
+      })
       .addCase(createSettlement.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -122,6 +183,18 @@ const settlementSlice = createSlice({
         state.settlements.unshift(action.payload);
       })
       .addCase(createSettlement.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(createBatchSettlements.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createBatchSettlements.fulfilled, (state, action: PayloadAction<Settlement[]>) => {
+        state.loading = false;
+        state.settlements.unshift(...action.payload);
+      })
+      .addCase(createBatchSettlements.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
@@ -139,5 +212,5 @@ const settlementSlice = createSlice({
   },
 });
 
-export const { clearError } = settlementSlice.actions;
+export const { clearError, clearBatchPreview } = settlementSlice.actions;
 export default settlementSlice.reducer;
