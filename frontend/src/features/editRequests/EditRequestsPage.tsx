@@ -57,6 +57,9 @@ const resourceSub = (req: EditRequest) => {
   return req.transaction?.vehicleNumber || '';
 };
 
+const formatCurrency = (val: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
+
 export const EditRequestsPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -145,6 +148,11 @@ export const EditRequestsPage: React.FC = () => {
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1', fontSize: '0.78rem' }}>{resourceLabel(req)}</Typography>
                     {resourceSub(req) && <Typography variant="caption" color="text.secondary">{resourceSub(req)}</Typography>}
+                    {req.resourceType === 'SETTLEMENT' && req.settlement?.finalAmount != null && (
+                      <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 700, display: 'block' }}>
+                        {formatCurrency(Number(req.settlement.finalAmount))}
+                      </Typography>
+                    )}
                   </Box>
                   {showStatus && <Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.68rem' }} />}
                 </Box>
@@ -202,6 +210,11 @@ export const EditRequestsPage: React.FC = () => {
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: '#6366f1' }}>{resourceLabel(req)}</Typography>
                         <Typography variant="caption" sx={{ color: '#64748b' }}>{resourceSub(req)}</Typography>
+                        {req.resourceType === 'SETTLEMENT' && req.settlement?.finalAmount != null && (
+                          <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 700, display: 'block' }}>
+                            {formatCurrency(Number(req.settlement.finalAmount))}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell><Chip label={req.resourceType} size="small" sx={{ fontSize: '0.65rem', fontWeight: 600, backgroundColor: 'rgba(99,102,241,0.1)', color: '#6366f1' }} /></TableCell>
                       <TableCell><Typography variant="body2" sx={{ fontWeight: 500 }}>{req.requester?.username || req.requestedBy}</Typography></TableCell>
@@ -311,6 +324,11 @@ export const EditRequestsPage: React.FC = () => {
               <Typography variant="caption" color="text.secondary">
                 {reviewTarget.resourceType} · {resourceLabel(reviewTarget)}
                 {resourceSub(reviewTarget) && ` · ${resourceSub(reviewTarget)}`}
+                {reviewTarget.resourceType === 'SETTLEMENT' && reviewTarget.settlement?.finalAmount != null && (
+                  <Typography component="span" variant="caption" sx={{ color: '#10b981', fontWeight: 700, ml: 0.5 }}>
+                    · {formatCurrency(Number(reviewTarget.settlement.finalAmount))}
+                  </Typography>
+                )}
               </Typography>
 
               <Divider sx={{ my: 2 }} />

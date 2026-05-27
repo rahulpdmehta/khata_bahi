@@ -690,6 +690,7 @@ export const SettlementsPage: React.FC = () => {
                         <TableCell sortDirection={sort.field === 'netAmount' ? sort.order : false}>
                           <TableSortLabel active={sort.field === 'netAmount'} direction={sort.field === 'netAmount' ? sort.order : 'desc'} onClick={() => handleSort('netAmount')}>Net Amount</TableSortLabel>
                         </TableCell>
+                        <TableCell>Settled</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Remaining</TableCell>
                         <TableCell align="center">Actions</TableCell>
@@ -698,11 +699,11 @@ export const SettlementsPage: React.FC = () => {
                     <TableBody>
                       {loading
                         ? Array.from({ length: 5 }).map((_, i) => (
-                            <TableRow key={i}>{Array.from({ length: isAdmin ? 9 : 8 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
+                            <TableRow key={i}>{Array.from({ length: isAdmin ? 10 : 9 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
                           ))
                         : settlements.length === 0
                         ? (
-                          <TableRow><TableCell colSpan={isAdmin ? 9 : 8} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
+                          <TableRow><TableCell colSpan={isAdmin ? 10 : 9} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
                         )
                         : settlements.map((s) => {
                             const sc = statusConfig[s.status];
@@ -717,6 +718,16 @@ export const SettlementsPage: React.FC = () => {
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(Number(s.totalIncome))}</Typography></TableCell>
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#ef4444' }}>{formatCurrency(Number(s.totalExpenses))}</Typography></TableCell>
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(Number(s.netAmount))}</Typography></TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
+                                    {formatCurrency(Number(s.settledAmount))}
+                                  </Typography>
+                                  {Number(s.finalAmount) !== Number(s.settledAmount) && (
+                                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                      of {formatCurrency(Number(s.finalAmount))}
+                                    </Typography>
+                                  )}
+                                </TableCell>
                                 <TableCell><Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.7rem' }} /></TableCell>
                                 <TableCell>
                                   {Number(s.remainingAmount) > 0 ? (
