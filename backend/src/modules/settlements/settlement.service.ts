@@ -173,6 +173,56 @@ export class SettlementService {
       cursor.setDate(cursor.getDate() + 1);
     }
 
+    // Build range boundaries for bulk queries
+    const rangeStart = new Date(days[0]);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(days[days.length - 1]);
+    rangeEnd.setHours(23, 59, 59, 999);
+
+    // Fetch all data in 3 bulk queries instead of 3×N sequential queries
+    const [directCashTx, splitCashPay, expenseRows] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { centerId, transactionDate: { gte: rangeStart, lte: rangeEnd }, paymentMode: 'CASH' },
+        select: { transactionDate: true, amount: true },
+      }),
+      prisma.transactionPayment.findMany({
+        where: {
+          paymentMode: 'CASH',
+          transaction: { centerId, transactionDate: { gte: rangeStart, lte: rangeEnd }, paymentMode: 'SPLIT' },
+        },
+        select: { amount: true, transaction: { select: { transactionDate: true } } },
+      }),
+      prisma.expense.findMany({
+        where: { centerId, expenseDate: { gte: rangeStart, lte: rangeEnd }, status: 'APPROVED' },
+        select: { expenseDate: true, amount: true },
+      }),
+    ]);
+
+    // Helper: return YYYY-MM-DD string using local timezone (matches setHours day boundaries)
+    const localDateKey = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    // Bucket all records by their local calendar day
+    const incomeByDay = new Map<string, number>();
+    const expensesByDay = new Map<string, number>();
+
+    for (const tx of directCashTx) {
+      const key = localDateKey(new Date(tx.transactionDate));
+      incomeByDay.set(key, (incomeByDay.get(key) ?? 0) + tx.amount.toNumber());
+    }
+    for (const pay of splitCashPay) {
+      const key = localDateKey(new Date(pay.transaction.transactionDate));
+      incomeByDay.set(key, (incomeByDay.get(key) ?? 0) + pay.amount.toNumber());
+    }
+    for (const exp of expenseRows) {
+      const key = localDateKey(new Date(exp.expenseDate));
+      expensesByDay.set(key, (expensesByDay.get(key) ?? 0) + exp.amount.toNumber());
+    }
+
     let runningCarryForward = initialCarryForward;
     const results: {
       date: string;
@@ -184,23 +234,16 @@ export class SettlementService {
     }[] = [];
 
     for (const day of days) {
-      const { totalIncome, totalExpenses, netAmount } = await aggregateDayFinancials(
-        centerId,
-        day
-      );
+      const dateKey = localDateKey(day);
+      const totalIncome = incomeByDay.get(dateKey) ?? 0;
+      const totalExpenses = expensesByDay.get(dateKey) ?? 0;
+      const netAmount = totalIncome - totalExpenses;
       const carryForwardAmount = runningCarryForward;
       const finalAmount = netAmount + carryForwardAmount;
 
-      results.push({
-        date: day.toISOString().slice(0, 10),
-        totalIncome,
-        totalExpenses,
-        netAmount,
-        carryForwardAmount,
-        finalAmount,
-      });
+      results.push({ date: dateKey, totalIncome, totalExpenses, netAmount, carryForwardAmount, finalAmount });
 
-      // Each day in the batch is fully settled, so next day's carry-forward = 0
+      // Each day in batch is fully settled — next carry-forward is 0
       runningCarryForward = 0;
     }
 
