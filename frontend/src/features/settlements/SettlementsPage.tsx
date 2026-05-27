@@ -147,9 +147,18 @@ export const SettlementsPage: React.FC = () => {
         })
         .catch(() => setLastSettledDate(null));
     });
+  }, [createForm.centerId]);
+
+  useEffect(() => {
+    if (!createForm.centerId || !createForm.endDate) {
+      dispatch(clearBatchPreview());
+      setSingleSettledAmount('');
+      return;
+    }
     dispatch(clearBatchPreview());
     setSingleSettledAmount('');
-  }, [createForm.centerId, dispatch]);
+    dispatch(fetchBatchPreview({ centerId: createForm.centerId, endDate: createForm.endDate }));
+  }, [createForm.centerId, createForm.endDate, dispatch]);
 
   useEffect(() => {
     const params: Record<string, unknown> = {
@@ -165,12 +174,6 @@ export const SettlementsPage: React.FC = () => {
     if (search) params.search = search;
     dispatch(fetchSettlements(params));
   }, [dispatch, page, rowsPerPage, statusFilter, centerFilter, dateFrom, dateTo, search, sort]);
-
-  const handlePreviewPendingDays = () => {
-    if (!createForm.centerId || !createForm.endDate) return;
-    setSingleSettledAmount('');
-    dispatch(fetchBatchPreview({ centerId: createForm.centerId, endDate: createForm.endDate }));
-  };
 
   const handleSingleDaySubmit = async () => {
     if (!batchPreviewDays || batchPreviewDays.length !== 1) return;
@@ -301,7 +304,6 @@ export const SettlementsPage: React.FC = () => {
                   value={createForm.centerId}
                   onChange={(e) => {
                     setCreateForm((f) => ({ ...f, centerId: e.target.value }));
-                    dispatch(clearBatchPreview());
                   }}
                 >
                   {(isAdmin ? centers : (user?.centers || [])).map((c) => (
@@ -321,7 +323,6 @@ export const SettlementsPage: React.FC = () => {
                   value={createForm.endDate}
                   onChange={(e) => {
                     setCreateForm((f) => ({ ...f, endDate: e.target.value }));
-                    dispatch(clearBatchPreview());
                   }}
                   InputLabelProps={{ shrink: true }}
                   helperText={
@@ -332,23 +333,14 @@ export const SettlementsPage: React.FC = () => {
                 />
               </Grid>
 
-              {/* Preview button */}
-              <Grid item xs={12}>
-                <Button
-                  variant="outlined"
-                  onClick={handlePreviewPendingDays}
-                  disabled={!createForm.centerId || !createForm.endDate || batchPreviewLoading}
-                  startIcon={
-                    batchPreviewLoading ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <AccountBalanceIcon />
-                    )
-                  }
-                >
-                  {batchPreviewLoading ? 'Loading...' : 'Preview Pending Days'}
-                </Button>
-              </Grid>
+              {/* Loading indicator */}
+              {batchPreviewLoading && batchPreviewDays === null && (
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress />
+                  </Box>
+                </Grid>
+              )}
 
               {/* Results area */}
               {batchPreviewDays !== null && (
