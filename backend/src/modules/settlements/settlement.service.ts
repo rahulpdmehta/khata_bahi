@@ -269,51 +269,62 @@ export class SettlementService {
         : totalFinal;
     let remainingBudget = targetSettled;
 
-    const settlements = await prisma.$transaction(async (tx) => {
-      const created: Awaited<ReturnType<typeof tx.settlement.create>>[] = [];
-      for (let i = 0; i < days.length; i++) {
-        const day = days[i];
-        const isLast = i === days.length - 1;
-        const settlementDate = new Date(day.date);
-        const settlementNumber = `SET${day.date.replace(/-/g, '')}${Date.now()}`;
+    // Write all settlements in one transaction; skip includes to keep it fast,
+    // then fetch the full records with relations after commit.
+    const createdIds = await prisma.$transaction(
+      async (tx) => {
+        const ids: string[] = [];
+        for (let i = 0; i < days.length; i++) {
+          const day = days[i];
+          const isLast = i === days.length - 1;
+          const settlementDate = new Date(day.date);
+          const settlementNumber = `SET${day.date.replace(/-/g, '')}${Date.now()}`;
 
-        let settledAmount: number;
-        let remainingAmount: number;
-        if (!isLast) {
-          settledAmount = day.finalAmount;
-          remainingAmount = 0;
-          remainingBudget -= day.finalAmount;
-        } else {
-          settledAmount = Math.max(0, Math.min(remainingBudget, day.finalAmount));
-          remainingAmount = day.finalAmount - settledAmount;
+          let settledAmount: number;
+          let remainingAmount: number;
+          if (!isLast) {
+            settledAmount = Math.max(0, day.finalAmount);
+            remainingAmount = 0;
+            remainingBudget -= day.finalAmount;
+          } else {
+            settledAmount = Math.max(0, Math.min(remainingBudget, day.finalAmount));
+            remainingAmount = day.finalAmount - settledAmount;
+          }
+
+          const { id } = await tx.settlement.create({
+            data: {
+              settlementNumber,
+              centerId: dto.centerId,
+              userId,
+              settlementDate,
+              totalIncome: day.totalIncome,
+              totalExpenses: day.totalExpenses,
+              netAmount: day.netAmount,
+              carryForwardAmount: day.carryForwardAmount,
+              finalAmount: day.finalAmount,
+              settledAmount,
+              remainingAmount,
+              status: 'PENDING',
+              notes: dto.notes,
+            },
+            select: { id: true },
+          });
+          ids.push(id);
         }
-
-        const settlement = await tx.settlement.create({
-          data: {
-            settlementNumber,
-            centerId: dto.centerId,
-            userId,
-            settlementDate,
-            totalIncome: day.totalIncome,
-            totalExpenses: day.totalExpenses,
-            netAmount: day.netAmount,
-            carryForwardAmount: day.carryForwardAmount,
-            finalAmount: day.finalAmount,
-            settledAmount,
-            remainingAmount,
-            status: 'PENDING',
-            notes: dto.notes,
-          },
-          include: settlementInclude,
-        });
-        created.push(settlement);
-      }
-      return created;
-    }).catch((err: { code?: string; message?: string }) => {
+        return ids;
+      },
+      { timeout: 30000 }
+    ).catch((err: { code?: string; message?: string }) => {
       if (err.code === 'P2002') {
         throw ApiError.conflict('One or more days in the batch already have settlements. Please refresh and try again.');
       }
       throw err;
+    });
+
+    const settlements = await prisma.settlement.findMany({
+      where: { id: { in: createdIds } },
+      include: settlementInclude,
+      orderBy: { settlementDate: 'asc' },
     });
 
     return settlements;

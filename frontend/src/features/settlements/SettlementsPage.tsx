@@ -741,9 +741,9 @@ export const SettlementsPage: React.FC = () => {
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(Number(s.netAmount))}</Typography></TableCell>
                                 <TableCell>
                                   <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
-                                    {formatCurrency(Number(s.settledAmount))}
+                                    {formatCurrency(Math.max(0, Number(s.settledAmount)))}
                                   </Typography>
-                                  {Number(s.finalAmount) !== Number(s.settledAmount) && (
+                                  {Number(s.finalAmount) > 0 && Number(s.finalAmount) !== Number(s.settledAmount) && (
                                     <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                                       of {formatCurrency(Number(s.finalAmount))}
                                     </Typography>

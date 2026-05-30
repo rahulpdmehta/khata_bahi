@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
 import { ApiError } from '../utils/ApiError';
 
 export const errorHandler = (
@@ -12,6 +13,14 @@ export const errorHandler = (
     return res.status(err.statusCode).json({
       success: false,
       message: err.message,
+    });
+  }
+
+  if (err instanceof ZodError) {
+    const message = err.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
+    return res.status(400).json({
+      success: false,
+      message: `Validation error: ${message}`,
     });
   }
 
