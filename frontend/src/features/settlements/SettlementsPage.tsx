@@ -518,21 +518,21 @@ export const SettlementsPage: React.FC = () => {
                                 </TableRow>
                               ))}
                               {/* Totals row */}
-                              <TableRow sx={{ backgroundColor: '#f8fafc' }}>
-                                <TableCell sx={{ fontWeight: 700 }}>Total ({batchPreviewDays.length} days)</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, color: '#10b981' }}>
+                              <TableRow sx={{ backgroundColor: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
+                                <TableCell sx={{ fontWeight: 800, fontSize: '1rem' }}>Total ({batchPreviewDays.length} days)</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#10b981' }}>
                                   {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.totalIncome, 0))}
                                 </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, color: '#ef4444' }}>
+                                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#ef4444' }}>
                                   {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.totalExpenses, 0))}
                                 </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
                                   {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.netAmount, 0))}
                                 </TableCell>
-                                <TableCell align="right" sx={{ color: '#94a3b8', fontWeight: 700 }}>
+                                <TableCell align="right" sx={{ color: '#94a3b8', fontWeight: 800, fontSize: '1.1rem' }}>
                                   {formatCurrency(batchPreviewDays[0].carryForwardAmount)}
                                 </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a' }}>
                                   {formatCurrency(batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.finalAmount, 0))}
                                 </TableCell>
                               </TableRow>
