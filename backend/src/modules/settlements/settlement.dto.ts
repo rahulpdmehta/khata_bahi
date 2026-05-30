@@ -15,6 +15,7 @@ export const batchPreviewQuerySchema = z.object({
 export const createBatchSettlementSchema = z.object({
   centerId: z.string().uuid(),
   endDate: z.string(),
+  settledAmount: z.number().min(0).optional(),
   notes: z.string().optional(),
 });
 

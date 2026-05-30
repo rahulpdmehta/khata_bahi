@@ -259,11 +259,34 @@ export class SettlementService {
       throw ApiError.badRequest('No pending days to settle for this date range');
     }
 
+    // Distribute settledAmount: all days except the last are fully settled;
+    // the last day absorbs any partial payment so the remainder carries forward.
+    const totalFinal = days.reduce((sum, d) => sum + d.finalAmount, 0);
+    const maxSettleable = Math.max(totalFinal, 0);
+    const targetSettled =
+      dto.settledAmount !== undefined
+        ? Math.min(dto.settledAmount, maxSettleable)
+        : totalFinal;
+    let remainingBudget = targetSettled;
+
     const settlements = await prisma.$transaction(async (tx) => {
       const created: Awaited<ReturnType<typeof tx.settlement.create>>[] = [];
-      for (const day of days) {
+      for (let i = 0; i < days.length; i++) {
+        const day = days[i];
+        const isLast = i === days.length - 1;
         const settlementDate = new Date(day.date);
         const settlementNumber = `SET${day.date.replace(/-/g, '')}${Date.now()}`;
+
+        let settledAmount: number;
+        let remainingAmount: number;
+        if (!isLast) {
+          settledAmount = day.finalAmount;
+          remainingAmount = 0;
+          remainingBudget -= day.finalAmount;
+        } else {
+          settledAmount = Math.max(0, Math.min(remainingBudget, day.finalAmount));
+          remainingAmount = day.finalAmount - settledAmount;
+        }
 
         const settlement = await tx.settlement.create({
           data: {
@@ -276,8 +299,8 @@ export class SettlementService {
             netAmount: day.netAmount,
             carryForwardAmount: day.carryForwardAmount,
             finalAmount: day.finalAmount,
-            settledAmount: day.finalAmount,
-            remainingAmount: 0,
+            settledAmount,
+            remainingAmount,
             status: 'PENDING',
             notes: dto.notes,
           },

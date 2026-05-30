@@ -118,6 +118,7 @@ export const SettlementsPage: React.FC = () => {
   });
   const [lastSettledDate, setLastSettledDate] = useState<string | null>(null);
   const [singleSettledAmount, setSingleSettledAmount] = useState('');
+  const [batchSettledAmount, setBatchSettledAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -153,10 +154,12 @@ export const SettlementsPage: React.FC = () => {
     if (!createForm.centerId || !createForm.endDate) {
       dispatch(clearBatchPreview());
       setSingleSettledAmount('');
+      setBatchSettledAmount('');
       return;
     }
     dispatch(clearBatchPreview());
     setSingleSettledAmount('');
+    setBatchSettledAmount('');
     dispatch(fetchBatchPreview({ centerId: createForm.centerId, endDate: createForm.endDate }));
   }, [createForm.centerId, createForm.endDate, dispatch]);
 
@@ -210,11 +213,15 @@ export const SettlementsPage: React.FC = () => {
     if (!batchPreviewDays || batchPreviewDays.length <= 1) return;
     setSubmitting(true);
     try {
+      const parsedBatchSettled = parseFloat(batchSettledAmount);
+      const settledAmt =
+        batchSettledAmount !== '' && !isNaN(parsedBatchSettled) ? parsedBatchSettled : undefined;
       const result = await dispatch(
         createBatchSettlements({
           centerId: createForm.centerId,
           endDate: createForm.endDate,
           notes: createForm.notes || undefined,
+          ...(settledAmt !== undefined && { settledAmount: settledAmt }),
         })
       ).unwrap();
       const count = result.length;
@@ -222,6 +229,7 @@ export const SettlementsPage: React.FC = () => {
       setSnack({ open: true, msg: `${count} settlement(s) submitted successfully!`, severity: 'success' });
       dispatch(clearBatchPreview());
       setSingleSettledAmount('');
+      setBatchSettledAmount('');
       setCreateForm((f) => ({ ...f, notes: '' }));
       setLastSettledDate(lastDate);
     } catch (err: unknown) {
@@ -531,6 +539,27 @@ export const SettlementsPage: React.FC = () => {
                             </TableBody>
                           </Table>
                         </TableContainer>
+                      </Grid>
+
+                      <Grid item xs={12} sm={4}>
+                        {(() => {
+                          const totalFinal = batchPreviewDays.reduce((s: number, d: BatchPreviewDay) => s + d.finalAmount, 0);
+                          const maxSettleable = Math.max(totalFinal, 0);
+                          return (
+                            <TextField
+                              fullWidth
+                              label="Settled Amount"
+                              type="number"
+                              value={batchSettledAmount}
+                              onChange={(e) => setBatchSettledAmount(e.target.value)}
+                              helperText={`Leave blank to settle full amount (${formatCurrency(maxSettleable)})`}
+                              inputProps={{ min: 0, max: maxSettleable, step: 1 }}
+                              InputProps={{
+                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                              }}
+                            />
+                          );
+                        })()}
                       </Grid>
 
                       <Grid item xs={12} sm={8}>

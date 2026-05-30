@@ -77,7 +77,7 @@ export const createSettlement = createAsyncThunk(
 export const createBatchSettlements = createAsyncThunk(
   'settlements/createBatchSettlements',
   async (
-    data: { centerId: string; endDate: string; notes?: string },
+    data: { centerId: string; endDate: string; settledAmount?: number; notes?: string },
     { rejectWithValue }
   ) => {
     try {
