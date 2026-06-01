@@ -404,7 +404,7 @@ export class SettlementService {
     }
     if (search) where.settlementNumber = { contains: search };
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       prisma.settlement.findMany({
         where,
         include: settlementInclude,
@@ -414,6 +414,48 @@ export class SettlementService {
       }),
       prisma.settlement.count({ where }),
     ]);
+
+    // Collect distinct batchIds on this page
+    const batchIds = [
+      ...new Set(rawData.filter((s) => s.batchId).map((s) => s.batchId as string)),
+    ];
+
+    // Fetch all settlements belonging to those batchIds (may include off-page records)
+    const batchGroupMap = new Map<string, SettlementWithRelations[]>();
+    if (batchIds.length > 0) {
+      const allBatchRecords = await prisma.settlement.findMany({
+        where: { batchId: { in: batchIds } },
+        include: settlementInclude,
+        orderBy: { settlementDate: 'desc' },
+      });
+      for (const record of allBatchRecords) {
+        if (!record.batchId) continue;
+        const list = batchGroupMap.get(record.batchId) ?? [];
+        list.push(record);
+        batchGroupMap.set(record.batchId, list);
+      }
+    }
+
+    // Build result: show batch group on the page where the most-recent member appears
+    const pageIds = new Set(rawData.map((s) => s.id));
+    const emittedBatchIds = new Set<string>();
+    const data: SettlementListItem[] = [];
+
+    for (const s of rawData) {
+      if (!s.batchId) {
+        data.push({ type: 'individual', ...s });
+      } else if (!emittedBatchIds.has(s.batchId)) {
+        const batchRecords = batchGroupMap.get(s.batchId) ?? [];
+        // batchRecords sorted desc; [0] is the most-recent settlement (the anchor)
+        const anchor = batchRecords[0];
+        if (anchor && pageIds.has(anchor.id)) {
+          data.push(this.aggregateBatchGroup(batchRecords));
+          emittedBatchIds.add(s.batchId);
+        }
+        // anchor not on this page = batch was shown on an earlier page, skip
+      }
+      // duplicate batchId on same page = skip (already emitted)
+    }
 
     return {
       data,
