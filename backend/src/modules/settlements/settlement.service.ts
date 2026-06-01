@@ -99,7 +99,11 @@ export class SettlementService {
       settledAmount: sorted.reduce((s, r) => s + Number(r.settledAmount), 0),
       remainingAmount: sorted.reduce((s, r) => s + Number(r.remainingAmount), 0),
       finalAmount: sorted.reduce((s, r) => s + Number(r.finalAmount), 0),
-      status: sorted[0].status,
+      status: sorted.some((r) => r.status === 'PENDING')
+        ? 'PENDING'
+        : sorted.every((r) => r.status === 'APPROVED')
+        ? 'APPROVED'
+        : 'REJECTED',
       createdAt: sorted[sorted.length - 1].createdAt.toISOString(),
     };
   }

@@ -246,11 +246,11 @@ const settlementSlice = createSlice({
       })
       .addCase(approveSettlement.fulfilled, (state, action: PayloadAction<Settlement>) => {
         const idx = state.settlements.findIndex((s) => s.type !== 'batch' && (s as Settlement).id === action.payload.id);
-        if (idx !== -1) state.settlements[idx] = action.payload;
+        if (idx !== -1) state.settlements[idx] = { ...action.payload, type: 'individual' };
       })
       .addCase(rejectSettlement.fulfilled, (state, action: PayloadAction<Settlement>) => {
         const idx = state.settlements.findIndex((s) => s.type !== 'batch' && (s as Settlement).id === action.payload.id);
-        if (idx !== -1) state.settlements[idx] = action.payload;
+        if (idx !== -1) state.settlements[idx] = { ...action.payload, type: 'individual' };
       })
       .addCase(deleteSettlement.fulfilled, (state, action: PayloadAction<string>) => {
         state.settlements = state.settlements.filter((s) => !(s.type !== 'batch' && (s as Settlement).id === action.payload));
