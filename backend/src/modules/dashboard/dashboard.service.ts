@@ -325,6 +325,18 @@ export class DashboardService {
     };
   }
 
+  async getSettlementTotals(userId: string, role: string, centerId?: string) {
+    const centerFilter = await this.centerScope(userId, role, centerId);
+    const result = await prisma.settlement.aggregate({
+      where: centerFilter,
+      _sum: { remainingAmount: true, carryForwardAmount: true },
+    });
+    return {
+      totalRemainingDues: Number(result._sum.remainingAmount ?? 0),
+      totalCarryForward: Number(result._sum.carryForwardAmount ?? 0),
+    };
+  }
+
   private async getIncome(where: Record<string, unknown>) {
     const result = await prisma.transaction.aggregate({
       where,

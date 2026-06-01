@@ -98,4 +98,14 @@ export class DashboardController {
     );
     res.json(ApiResponse.success(result));
   });
+
+  getSettlementTotals = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { centerId } = req.query;
+    const result = await dashboardService.getSettlementTotals(
+      req.user!.userId,
+      req.user!.role,
+      centerId as string | undefined
+    );
+    res.json(ApiResponse.success(result));
+  });
 }
