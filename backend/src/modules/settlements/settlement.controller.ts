@@ -80,6 +80,25 @@ export class SettlementController {
     res.json(ApiResponse.success(result, 'Settlement rejected'));
   });
 
+  approveBatch = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const result = await settlementService.approveBatch(req.params.batchId, req.user!.userId);
+    res.json(ApiResponse.success(result, 'Batch approved successfully'));
+  });
+
+  rejectBatch = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const result = await settlementService.rejectBatch(
+      req.params.batchId,
+      req.user!.userId,
+      req.body.notes || ''
+    );
+    res.json(ApiResponse.success(result, 'Batch rejected'));
+  });
+
+  deleteBatch = asyncHandler(async (req: AuthRequest, res: Response) => {
+    await settlementService.deleteBatch(req.params.batchId);
+    res.json(ApiResponse.success(null, 'Batch deleted'));
+  });
+
   deleteSettlement = asyncHandler(async (req: AuthRequest, res: Response) => {
     await settlementService.deleteSettlement(req.params.id);
     res.json(ApiResponse.success(null, 'Settlement deleted'));

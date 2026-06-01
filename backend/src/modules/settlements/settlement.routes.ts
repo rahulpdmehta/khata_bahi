@@ -16,4 +16,8 @@ router.put('/:id/approve', authenticate, requireRole('ADMIN'), settlementControl
 router.put('/:id/reject', authenticate, requireRole('ADMIN'), settlementController.reject);
 router.delete('/:id', authenticate, requireRole('ADMIN'), settlementController.deleteSettlement);
 
+router.put('/batch/:batchId/approve', authenticate, requireRole('ADMIN'), settlementController.approveBatch);
+router.put('/batch/:batchId/reject', authenticate, requireRole('ADMIN'), settlementController.rejectBatch);
+router.delete('/batch/:batchId', authenticate, requireRole('ADMIN'), settlementController.deleteBatch);
+
 export default router;
