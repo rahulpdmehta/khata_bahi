@@ -245,31 +245,31 @@ const settlementSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(approveSettlement.fulfilled, (state, action: PayloadAction<Settlement>) => {
-        const idx = state.settlements.findIndex((s) => (s as Settlement).id === action.payload.id);
+        const idx = state.settlements.findIndex((s) => s.type !== 'batch' && (s as Settlement).id === action.payload.id);
         if (idx !== -1) state.settlements[idx] = action.payload;
       })
       .addCase(rejectSettlement.fulfilled, (state, action: PayloadAction<Settlement>) => {
-        const idx = state.settlements.findIndex((s) => (s as Settlement).id === action.payload.id);
+        const idx = state.settlements.findIndex((s) => s.type !== 'batch' && (s as Settlement).id === action.payload.id);
         if (idx !== -1) state.settlements[idx] = action.payload;
       })
       .addCase(deleteSettlement.fulfilled, (state, action: PayloadAction<string>) => {
-        state.settlements = state.settlements.filter((s) => (s as Settlement).id !== action.payload);
+        state.settlements = state.settlements.filter((s) => !(s.type !== 'batch' && (s as Settlement).id === action.payload));
       })
       .addCase(approveBatch.fulfilled, (state, action: PayloadAction<BatchSettlementGroup>) => {
         const idx = state.settlements.findIndex(
-          (s) => s.type === 'batch' && (s as BatchSettlementGroup).batchId === action.payload.batchId
+          (s) => s.type === 'batch' && s.batchId === action.payload.batchId
         );
         if (idx !== -1) state.settlements[idx] = action.payload;
       })
       .addCase(rejectBatch.fulfilled, (state, action: PayloadAction<BatchSettlementGroup>) => {
         const idx = state.settlements.findIndex(
-          (s) => s.type === 'batch' && (s as BatchSettlementGroup).batchId === action.payload.batchId
+          (s) => s.type === 'batch' && s.batchId === action.payload.batchId
         );
         if (idx !== -1) state.settlements[idx] = action.payload;
       })
       .addCase(deleteBatch.fulfilled, (state, action: PayloadAction<string>) => {
         state.settlements = state.settlements.filter(
-          (s) => !(s.type === 'batch' && (s as BatchSettlementGroup).batchId === action.payload)
+          (s) => !(s.type === 'batch' && s.batchId === action.payload)
         );
       });
   },
