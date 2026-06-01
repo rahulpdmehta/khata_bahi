@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { apiClient } from '../../utils/apiClient';
-import type { Settlement, ApiResponse } from '../../types';
+import type { Settlement, BatchSettlementGroup, SettlementListItem, ApiResponse } from '../../types';
 
 export interface BatchPreviewDay {
   date: string;
@@ -12,7 +12,7 @@ export interface BatchPreviewDay {
 }
 
 interface SettlementState {
-  settlements: Settlement[];
+  settlements: SettlementListItem[];
   loading: boolean;
   error: string | null;
   pagination: { total: number; page: number; limit: number; totalPages: number } | null;
@@ -35,7 +35,7 @@ export const fetchSettlements = createAsyncThunk(
     try {
       const response = await apiClient.get('/settlements', { params: filters });
       const payload = response.data?.data;
-      const data = (Array.isArray(payload) ? payload : payload?.data ?? []) as Settlement[];
+      const data = (Array.isArray(payload) ? payload : payload?.data ?? []) as SettlementListItem[];
       const pagination = Array.isArray(payload) ? null : (payload?.pagination ?? null);
       return { data, pagination };
     } catch (error: unknown) {
@@ -136,6 +136,51 @@ export const approveSettlement = createAsyncThunk(
   }
 );
 
+export const approveBatch = createAsyncThunk(
+  'settlements/approveBatch',
+  async (batchId: string, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.put<ApiResponse<BatchSettlementGroup>>(
+        `/settlements/batch/${batchId}/approve`,
+        {}
+      );
+      return response.data.data!;
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return rejectWithValue((error as any).response?.data?.message || 'Failed to approve batch');
+    }
+  }
+);
+
+export const rejectBatch = createAsyncThunk(
+  'settlements/rejectBatch',
+  async ({ batchId, notes }: { batchId: string; notes: string }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.put<ApiResponse<BatchSettlementGroup>>(
+        `/settlements/batch/${batchId}/reject`,
+        { notes }
+      );
+      return response.data.data!;
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return rejectWithValue((error as any).response?.data?.message || 'Failed to reject batch');
+    }
+  }
+);
+
+export const deleteBatch = createAsyncThunk(
+  'settlements/deleteBatch',
+  async (batchId: string, { rejectWithValue }) => {
+    try {
+      await apiClient.delete(`/settlements/batch/${batchId}`);
+      return batchId;
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return rejectWithValue((error as any).response?.data?.message || 'Failed to delete batch');
+    }
+  }
+);
+
 const settlementSlice = createSlice({
   name: 'settlements',
   initialState,
@@ -200,15 +245,32 @@ const settlementSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(approveSettlement.fulfilled, (state, action: PayloadAction<Settlement>) => {
-        const idx = state.settlements.findIndex((s) => s.id === action.payload.id);
+        const idx = state.settlements.findIndex((s) => (s as Settlement).id === action.payload.id);
         if (idx !== -1) state.settlements[idx] = action.payload;
       })
       .addCase(rejectSettlement.fulfilled, (state, action: PayloadAction<Settlement>) => {
-        const idx = state.settlements.findIndex((s) => s.id === action.payload.id);
+        const idx = state.settlements.findIndex((s) => (s as Settlement).id === action.payload.id);
         if (idx !== -1) state.settlements[idx] = action.payload;
       })
       .addCase(deleteSettlement.fulfilled, (state, action: PayloadAction<string>) => {
-        state.settlements = state.settlements.filter((s) => s.id !== action.payload);
+        state.settlements = state.settlements.filter((s) => (s as Settlement).id !== action.payload);
+      })
+      .addCase(approveBatch.fulfilled, (state, action: PayloadAction<BatchSettlementGroup>) => {
+        const idx = state.settlements.findIndex(
+          (s) => s.type === 'batch' && (s as BatchSettlementGroup).batchId === action.payload.batchId
+        );
+        if (idx !== -1) state.settlements[idx] = action.payload;
+      })
+      .addCase(rejectBatch.fulfilled, (state, action: PayloadAction<BatchSettlementGroup>) => {
+        const idx = state.settlements.findIndex(
+          (s) => s.type === 'batch' && (s as BatchSettlementGroup).batchId === action.payload.batchId
+        );
+        if (idx !== -1) state.settlements[idx] = action.payload;
+      })
+      .addCase(deleteBatch.fulfilled, (state, action: PayloadAction<string>) => {
+        state.settlements = state.settlements.filter(
+          (s) => !(s.type === 'batch' && (s as BatchSettlementGroup).batchId === action.payload)
+        );
       });
   },
 });

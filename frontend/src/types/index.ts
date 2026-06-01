@@ -154,6 +154,7 @@ export interface EditRequest {
 }
 
 export interface Settlement {
+  type?: 'individual';
   id: string;
   settlementNumber: string;
   centerId: string;
@@ -170,9 +171,30 @@ export interface Settlement {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   approvedBy?: string;
   notes?: string;
+  batchId?: string;
   center?: Center;
   user?: Partial<User>;
 }
+
+export interface BatchSettlementGroup {
+  type: 'batch';
+  batchId: string;
+  centerId: string;
+  centerName: string;
+  startDate: string;
+  endDate: string;
+  count: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netAmount: number;
+  settledAmount: number;
+  remainingAmount: number;
+  finalAmount: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+}
+
+export type SettlementListItem = Settlement | BatchSettlementGroup;
 
 export interface PaginatedResponse<T> {
   data: T[];
