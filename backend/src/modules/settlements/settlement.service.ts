@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
 import { assertCenterAccess, buildCenterWhereClause } from '../../utils/centerAccess';
@@ -18,6 +20,30 @@ const settlementInclude = {
     },
   },
 };
+
+type SettlementWithRelations = Prisma.SettlementGetPayload<{ include: typeof settlementInclude }>;
+
+type BatchGroup = {
+  type: 'batch';
+  batchId: string;
+  centerId: string;
+  centerName: string;
+  startDate: string;
+  endDate: string;
+  count: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netAmount: number;
+  settledAmount: number;
+  remainingAmount: number;
+  finalAmount: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+};
+
+export type SettlementListItem =
+  | ({ type: 'individual' } & SettlementWithRelations)
+  | BatchGroup;
 
 // Reusable helper: aggregate income and expenses for one calendar day
 async function aggregateDayFinancials(centerId: string, date: Date) {
@@ -49,6 +75,35 @@ async function aggregateDayFinancials(centerId: string, date: Date) {
 }
 
 export class SettlementService {
+  private aggregateBatchGroup(records: SettlementWithRelations[]): BatchGroup {
+    const sorted = [...records].sort(
+      (a, b) => new Date(a.settlementDate).getTime() - new Date(b.settlementDate).getTime()
+    );
+    const toDateStr = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    return {
+      type: 'batch',
+      batchId: sorted[0].batchId!,
+      centerId: sorted[0].centerId,
+      centerName: sorted[0].center?.centerName ?? '',
+      startDate: toDateStr(new Date(sorted[0].settlementDate)),
+      endDate: toDateStr(new Date(sorted[sorted.length - 1].settlementDate)),
+      count: sorted.length,
+      totalIncome: sorted.reduce((s, r) => s + Number(r.totalIncome), 0),
+      totalExpenses: sorted.reduce((s, r) => s + Number(r.totalExpenses), 0),
+      netAmount: sorted.reduce((s, r) => s + Number(r.netAmount), 0),
+      settledAmount: sorted.reduce((s, r) => s + Number(r.settledAmount), 0),
+      remainingAmount: sorted.reduce((s, r) => s + Number(r.remainingAmount), 0),
+      finalAmount: sorted.reduce((s, r) => s + Number(r.finalAmount), 0),
+      status: sorted[0].status,
+      createdAt: sorted[sorted.length - 1].createdAt.toISOString(),
+    };
+  }
+
   async preview(userId: string, role: string, centerId: string, settlementDate: string) {
     await assertCenterAccess(userId, role, centerId);
     return aggregateDayFinancials(centerId, new Date(settlementDate));
@@ -268,6 +323,7 @@ export class SettlementService {
         ? Math.min(dto.settledAmount, maxSettleable)
         : totalFinal;
     let remainingBudget = targetSettled;
+    const batchId = randomUUID();
 
     // Write all settlements in one transaction; skip includes to keep it fast,
     // then fetch the full records with relations after commit.
@@ -305,6 +361,7 @@ export class SettlementService {
               settledAmount,
               remainingAmount,
               status: 'PENDING',
+              batchId,
               notes: dto.notes,
             },
             select: { id: true },
@@ -388,6 +445,51 @@ export class SettlementService {
       data: { status: 'APPROVED', approvedBy: adminId, approvedAt: new Date() },
       include: settlementInclude,
     });
+  }
+
+  async approveBatch(batchId: string, adminId: string): Promise<BatchGroup> {
+    const records = await prisma.settlement.findMany({
+      where: { batchId },
+      include: settlementInclude,
+    });
+    if (records.length === 0) throw ApiError.notFound('Batch not found');
+    const pendingIds = records.filter((r) => r.status === 'PENDING').map((r) => r.id);
+    if (pendingIds.length === 0) throw ApiError.badRequest('No pending settlements in this batch');
+    await prisma.settlement.updateMany({
+      where: { id: { in: pendingIds } },
+      data: { status: 'APPROVED', approvedBy: adminId, approvedAt: new Date() },
+    });
+    const updated = await prisma.settlement.findMany({
+      where: { batchId },
+      include: settlementInclude,
+    });
+    return this.aggregateBatchGroup(updated);
+  }
+
+  async rejectBatch(batchId: string, adminId: string, notes: string): Promise<BatchGroup> {
+    const records = await prisma.settlement.findMany({
+      where: { batchId },
+      include: settlementInclude,
+    });
+    if (records.length === 0) throw ApiError.notFound('Batch not found');
+    const pendingIds = records.filter((r) => r.status === 'PENDING').map((r) => r.id);
+    if (pendingIds.length === 0) throw ApiError.badRequest('No pending settlements in this batch');
+    await prisma.settlement.updateMany({
+      where: { id: { in: pendingIds } },
+      data: { status: 'REJECTED', approvedBy: adminId, notes },
+    });
+    const updated = await prisma.settlement.findMany({
+      where: { batchId },
+      include: settlementInclude,
+    });
+    return this.aggregateBatchGroup(updated);
+  }
+
+  async deleteBatch(batchId: string): Promise<string> {
+    const count = await prisma.settlement.count({ where: { batchId } });
+    if (count === 0) throw ApiError.notFound('Batch not found');
+    await prisma.settlement.deleteMany({ where: { batchId } });
+    return batchId;
   }
 
   async reject(settlementId: string, adminId: string, notes: string) {
