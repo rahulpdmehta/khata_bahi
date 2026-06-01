@@ -355,6 +355,11 @@ export const DashboardPage: React.FC = () => {
   const [recentTx, setRecentTx] = useState<Record<string, unknown>[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [settlementTotals, setSettlementTotals] = useState<{
+    totalRemainingDues: number;
+    totalCarryForward: number;
+  } | null>(null);
+  const [totalsLoading, setTotalsLoading] = useState(false);
 
   // Fetch centers list for admin filter
   useEffect(() => {
@@ -366,6 +371,16 @@ export const DashboardPage: React.FC = () => {
     }
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    setTotalsLoading(true);
+    const params: Record<string, unknown> = {};
+    if (centerId) params.centerId = centerId;
+    apiClient.get('/dashboard/settlement-totals', { params })
+      .then((res) => setSettlementTotals(res.data?.data ?? null))
+      .catch(() => setSettlementTotals(null))
+      .finally(() => setTotalsLoading(false));
+  }, [centerId, isAdmin]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -498,6 +513,39 @@ export const DashboardPage: React.FC = () => {
           />
         </Box>
       </Box>
+
+      {/* ── All-Time Settlement Stats (admin only, no date filter) ── */}
+      {isAdmin && (
+        <Grid container spacing={2} sx={{ mb: 2.5 }}>
+          <Grid item xs={12} sx={{ pb: 0 }}>
+            <Typography variant="caption" sx={{ color: '#475569', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              All Time
+            </Typography>
+          </Grid>
+          <Grid item xs={6} sm={4}>
+            <StatCard
+              period="All Time"
+              label="Settlement Dues"
+              value={settlementTotals?.totalRemainingDues ?? 0}
+              accentColor="#f59e0b"
+              icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />}
+              loading={totalsLoading}
+              trend="neutral"
+            />
+          </Grid>
+          <Grid item xs={6} sm={4}>
+            <StatCard
+              period="All Time"
+              label="Carry-Forward"
+              value={settlementTotals?.totalCarryForward ?? 0}
+              accentColor="#6366f1"
+              icon={<TrendingUpIcon sx={{ fontSize: 20 }} />}
+              loading={totalsLoading}
+              trend="neutral"
+            />
+          </Grid>
+        </Grid>
+      )}
 
       {/* ── Filter Bar ── */}
       <Card sx={{ borderRadius: '14px', mb: 2.5 }}>
