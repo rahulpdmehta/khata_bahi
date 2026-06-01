@@ -58,11 +58,14 @@ import {
   fetchBatchPreview,
   createBatchSettlements,
   clearBatchPreview,
+  approveBatch,
+  rejectBatch,
+  deleteBatch,
   type BatchPreviewDay,
 } from './settlementSlice';
 import { fetchCenters } from '../admin/centerSlice';
 import { createEditRequest } from '../editRequests/editRequestSlice';
-import type { Settlement } from '../../types';
+import type { Settlement, BatchSettlementGroup } from '../../types';
 
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
@@ -98,6 +101,8 @@ export const SettlementsPage: React.FC = () => {
   });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
+  const [deleteBatchId, setDeleteBatchId] = useState<string | null>(null);
+  const [rejectBatchId, setRejectBatchId] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const [editRequestSettlement, setEditRequestSettlement] = useState<Settlement | null>(null);
   const [editRequestReason, setEditRequestReason] = useState('');
@@ -273,6 +278,39 @@ export const SettlementsPage: React.FC = () => {
       setSnack({ open: true, msg: 'Failed to delete.', severity: 'error' });
     } finally {
       setDeleteId(null);
+    }
+  };
+
+  const handleApproveBatch = async (batchId: string) => {
+    try {
+      await dispatch(approveBatch(batchId)).unwrap();
+      setSnack({ open: true, msg: 'Batch approved!', severity: 'success' });
+    } catch {
+      setSnack({ open: true, msg: 'Failed to approve batch', severity: 'error' });
+    }
+  };
+
+  const handleRejectBatch = async () => {
+    if (!rejectBatchId) return;
+    try {
+      await dispatch(rejectBatch({ batchId: rejectBatchId, notes: rejectNotes })).unwrap();
+      setSnack({ open: true, msg: 'Batch rejected.', severity: 'success' });
+      setRejectBatchId(null);
+      setRejectNotes('');
+    } catch {
+      setSnack({ open: true, msg: 'Failed to reject batch.', severity: 'error' });
+    }
+  };
+
+  const handleDeleteBatch = async () => {
+    if (!deleteBatchId) return;
+    try {
+      await dispatch(deleteBatch(deleteBatchId)).unwrap();
+      setSnack({ open: true, msg: 'Batch deleted.', severity: 'success' });
+    } catch {
+      setSnack({ open: true, msg: 'Failed to delete batch.', severity: 'error' });
+    } finally {
+      setDeleteBatchId(null);
     }
   };
 
@@ -637,7 +675,44 @@ export const SettlementsPage: React.FC = () => {
                   <Box sx={{ py: 6, textAlign: 'center' }}><Typography color="text.secondary">No settlements found</Typography></Box>
                 ) : (
                   <Stack divider={<Divider />}>
-                    {settlements.map((s) => {
+                    {settlements.map((item) => {
+                      if (item.type === 'batch') {
+                        const b = item as BatchSettlementGroup;
+                        const sc = statusConfig[b.status];
+                        return (
+                          <Box key={b.batchId} sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                <Chip label="BATCH" size="small" sx={{ backgroundColor: '#6366f1', color: '#fff', fontWeight: 700, fontSize: '0.65rem' }} />
+                                <Typography variant="caption" sx={{ color: '#64748b' }}>{b.count} settlements</Typography>
+                              </Box>
+                              <Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.68rem' }} />
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.25 }}>{b.centerName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Typography>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mt: 1.5, mb: 1 }}>
+                              <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Income</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(b.totalIncome)}</Typography></Box>
+                              <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Expenses</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#ef4444' }}>{formatCurrency(b.totalExpenses)}</Typography></Box>
+                              <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Net</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(b.netAmount)}</Typography></Box>
+                              {b.remainingAmount > 0 && (
+                                <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>{formatCurrency(b.remainingAmount)}</Typography></Box>
+                              )}
+                            </Box>
+                            {isAdmin && (
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                {b.status === 'PENDING' && (
+                                  <>
+                                    <Tooltip title="Approve Batch"><IconButton size="small" onClick={() => handleApproveBatch(b.batchId)} sx={{ color: '#10b981' }}><ApproveIcon fontSize="small" /></IconButton></Tooltip>
+                                    <Tooltip title="Reject Batch"><IconButton size="small" onClick={() => { setRejectBatchId(b.batchId); setRejectNotes(''); }} sx={{ color: '#f59e0b' }}><RejectIcon fontSize="small" /></IconButton></Tooltip>
+                                  </>
+                                )}
+                                <Tooltip title="Delete Batch"><IconButton size="small" onClick={() => setDeleteBatchId(b.batchId)} sx={{ color: '#ef4444' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                              </Box>
+                            )}
+                          </Box>
+                        );
+                      }
+                      const s = item as Settlement;
                       const sc = statusConfig[s.status];
                       return (
                         <Box key={s.id} sx={{ p: 2 }}>
@@ -726,7 +801,53 @@ export const SettlementsPage: React.FC = () => {
                         ? (
                           <TableRow><TableCell colSpan={isAdmin ? 10 : 9} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
                         )
-                        : settlements.map((s) => {
+                        : settlements.map((item) => {
+                            if (item.type === 'batch') {
+                              const b = item as BatchSettlementGroup;
+                              const sc = statusConfig[b.status];
+                              return (
+                                <TableRow key={b.batchId} hover sx={{ backgroundColor: '#f8f7ff' }}>
+                                  <TableCell>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                      <Chip label="BATCH" size="small" sx={{ backgroundColor: '#6366f1', color: '#fff', fontWeight: 700, fontSize: '0.65rem', width: 'fit-content' }} />
+                                      <Typography variant="caption" sx={{ color: '#64748b' }}>{b.count} settlements</Typography>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>{b.centerName}</TableCell>
+                                  <TableCell>
+                                    <Typography variant="body2">{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Typography>
+                                  </TableCell>
+                                  <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(b.totalIncome)}</Typography></TableCell>
+                                  <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#ef4444' }}>{formatCurrency(b.totalExpenses)}</Typography></TableCell>
+                                  <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(b.netAmount)}</Typography></TableCell>
+                                  <TableCell>
+                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
+                                      {formatCurrency(Math.max(0, b.settledAmount))}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell><Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.7rem' }} /></TableCell>
+                                  <TableCell>
+                                    {b.remainingAmount > 0
+                                      ? <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>{formatCurrency(b.remainingAmount)}</Typography>
+                                      : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {isAdmin && (
+                                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                                        {b.status === 'PENDING' && (
+                                          <>
+                                            <Tooltip title="Approve Batch"><IconButton size="small" onClick={() => handleApproveBatch(b.batchId)} sx={{ color: '#10b981' }}><ApproveIcon fontSize="small" /></IconButton></Tooltip>
+                                            <Tooltip title="Reject Batch"><IconButton size="small" onClick={() => { setRejectBatchId(b.batchId); setRejectNotes(''); }} sx={{ color: '#f59e0b' }}><RejectIcon fontSize="small" /></IconButton></Tooltip>
+                                          </>
+                                        )}
+                                        <Tooltip title="Delete Batch"><IconButton size="small" onClick={() => setDeleteBatchId(b.batchId)} sx={{ color: '#ef4444' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                                      </Box>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            }
+                            const s = item as Settlement;
                             const sc = statusConfig[s.status];
                             return (
                               <TableRow key={s.id} hover>
@@ -872,26 +993,38 @@ export const SettlementsPage: React.FC = () => {
       </Dialog>
 
       {/* Delete confirm */}
-      <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!deleteId || !!deleteBatchId} onClose={() => { setDeleteId(null); setDeleteBatchId(null); }} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>Confirm Delete</DialogTitle>
         <DialogContent>
-          <DialogContentText>Delete this settlement? This cannot be undone.</DialogContentText>
+          <DialogContentText>
+            {deleteBatchId
+              ? 'Delete this entire batch of settlements? This cannot be undone.'
+              : 'Delete this settlement? This cannot be undone.'}
+          </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setDeleteId(null)} variant="outlined">Cancel</Button>
-          <Button onClick={handleDelete} variant="contained" color="error">Delete</Button>
+          <Button onClick={() => { setDeleteId(null); setDeleteBatchId(null); }} variant="outlined">Cancel</Button>
+          <Button
+            onClick={() => { if (deleteBatchId) handleDeleteBatch(); else handleDelete(); }}
+            variant="contained"
+            color="error"
+          >
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Reject dialog */}
-      {rejectId && (
+      {(rejectId || rejectBatchId) && (
         <Box
           sx={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}
-          onClick={() => setRejectId(null)}
+          onClick={() => { setRejectId(null); setRejectBatchId(null); }}
         >
           <Card sx={{ maxWidth: 440, width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Reject Settlement</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                {rejectBatchId ? 'Reject Batch' : 'Reject Settlement'}
+              </Typography>
               <TextField
                 fullWidth
                 label="Notes (optional)"
@@ -903,8 +1036,14 @@ export const SettlementsPage: React.FC = () => {
                 sx={{ mb: 2 }}
               />
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                <Button variant="outlined" onClick={() => setRejectId(null)}>Cancel</Button>
-                <Button variant="contained" color="error" onClick={handleReject}>Reject</Button>
+                <Button variant="outlined" onClick={() => { setRejectId(null); setRejectBatchId(null); }}>Cancel</Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={() => { if (rejectBatchId) handleRejectBatch(); else handleReject(); }}
+                >
+                  Reject
+                </Button>
               </Box>
             </CardContent>
           </Card>
