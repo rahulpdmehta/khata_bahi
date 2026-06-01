@@ -259,6 +259,7 @@ model Settlement {
   approvedBy         String?          @db.Char(36)
   approvedAt         DateTime?
   notes              String?
+  batchId            String?          @db.Char(36)
   createdAt          DateTime         @default(now())
 
   center       Center        @relation(fields: [centerId], references: [id])
@@ -269,6 +270,7 @@ model Settlement {
   @@unique([centerId, settlementDate])
   @@index([centerId, settlementDate])
   @@index([status])
+  @@index([batchId])
   @@map("settlements")
 }
 
