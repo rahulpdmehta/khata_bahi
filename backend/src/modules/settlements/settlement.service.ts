@@ -412,7 +412,7 @@ export class SettlementService {
       prisma.settlement.findMany({
         where,
         include: settlementInclude,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: [{ [sortBy]: sortOrder }, { createdAt: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),
