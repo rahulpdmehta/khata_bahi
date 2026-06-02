@@ -128,44 +128,67 @@ export class SettlementService {
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(settlementDate);
     endOfDay.setHours(23, 59, 59, 999);
+    const newDay = new Date(settlementDate);
+    newDay.setHours(0, 0, 0, 0);
 
-    const existing = await prisma.settlement.findFirst({
-      where: {
-        centerId: dto.centerId,
-        settlementDate: { gte: startOfDay, lte: endOfDay },
-      },
-    });
-    if (existing) {
-      throw ApiError.conflict('A settlement already exists for this center on this date');
-    }
-
-    // Auto-compute carry-forward from the last settlement's remainingAmount
-    const lastSettlement = await prisma.settlement.findFirst({
-      where: { centerId: dto.centerId },
+    // Carry-forward anchors on the last APPROVED settlement only
+    const lastApproved = await prisma.settlement.findFirst({
+      where: { centerId: dto.centerId, status: 'APPROVED' },
       orderBy: { settlementDate: 'desc' },
     });
-    const carryForwardAmount = lastSettlement ? Number(lastSettlement.remainingAmount) : 0;
+    const carryForwardAmount = lastApproved ? Number(lastApproved.remainingAmount) : 0;
 
-    // Enforce sequential creation: no gaps allowed
-    if (lastSettlement) {
-      const lastDate = new Date(lastSettlement.settlementDate);
-      lastDate.setHours(0, 0, 0, 0);
-      const expectedNext = new Date(lastDate);
-      expectedNext.setDate(expectedNext.getDate() + 1);
-      const newDay = new Date(settlementDate);
-      newDay.setHours(0, 0, 0, 0);
-      if (newDay.getTime() !== expectedNext.getTime()) {
-        if (newDay < expectedNext) {
-          throw ApiError.badRequest(
-            'Cannot create a settlement for a date before or equal to an already settled date.'
-          );
-        }
-        const pendingFrom = expectedNext.toISOString().slice(0, 10);
-        throw ApiError.badRequest(
-          `Pending settlements exist from ${pendingFrom}. Use batch creation to settle all pending days first.`
-        );
+    // Block while a settlement after the last approved is still PENDING
+    const pending = await prisma.settlement.findFirst({
+      where: {
+        centerId: dto.centerId,
+        status: 'PENDING',
+        ...(lastApproved ? { settlementDate: { gt: lastApproved.settlementDate } } : {}),
+      },
+      orderBy: { settlementDate: 'asc' },
+    });
+    if (pending) {
+      throw ApiError.badRequest(
+        `Settlement for ${pending.settlementDate.toISOString().slice(0, 10)} is pending approval. Approve or reject it before creating a new one.`
+      );
+    }
+
+    // Determine the window start (first settleable / re-settleable date)
+    let windowStartDate: Date | null;
+    if (lastApproved) {
+      windowStartDate = new Date(lastApproved.settlementDate);
+      windowStartDate.setHours(0, 0, 0, 0);
+      windowStartDate.setDate(windowStartDate.getDate() + 1);
+    } else {
+      const earliest = await prisma.settlement.findFirst({
+        where: { centerId: dto.centerId },
+        orderBy: { settlementDate: 'asc' },
+      });
+      if (earliest) {
+        windowStartDate = new Date(earliest.settlementDate);
+        windowStartDate.setHours(0, 0, 0, 0);
+      } else {
+        windowStartDate = null;
       }
     }
+
+    if (windowStartDate) {
+      if (newDay.getTime() < windowStartDate.getTime()) {
+        throw ApiError.badRequest('Cannot settle a date on or before an already-approved settlement.');
+      }
+      if (newDay.getTime() > windowStartDate.getTime()) {
+        throw ApiError.badRequest('Settle earlier pending days first — use batch creation.');
+      }
+    }
+
+    // Existing record on the requested date: replace only if REJECTED
+    const existing = await prisma.settlement.findFirst({
+      where: { centerId: dto.centerId, settlementDate: { gte: startOfDay, lte: endOfDay } },
+    });
+    if (existing && existing.status !== 'REJECTED') {
+      throw ApiError.conflict('A settlement already exists for this center on this date');
+    }
+    const rejectedToReplaceId = existing && existing.status === 'REJECTED' ? existing.id : null;
 
     const { totalIncome, totalExpenses, netAmount } = await aggregateDayFinancials(
       dto.centerId,
@@ -177,23 +200,28 @@ export class SettlementService {
     const remainingAmount = finalAmount - settledAmount;
     const settlementNumber = `SET${Date.now()}`;
 
-    const settlement = await prisma.settlement.create({
-      data: {
-        settlementNumber,
-        centerId: dto.centerId,
-        userId,
-        settlementDate,
-        totalIncome,
-        totalExpenses,
-        netAmount,
-        carryForwardAmount,
-        finalAmount,
-        settledAmount,
-        remainingAmount,
-        status: 'PENDING',
-        notes: dto.notes,
-      },
-      include: settlementInclude,
+    const settlement = await prisma.$transaction(async (tx) => {
+      if (rejectedToReplaceId) {
+        await tx.settlement.delete({ where: { id: rejectedToReplaceId } });
+      }
+      return tx.settlement.create({
+        data: {
+          settlementNumber,
+          centerId: dto.centerId,
+          userId,
+          settlementDate,
+          totalIncome,
+          totalExpenses,
+          netAmount,
+          carryForwardAmount,
+          finalAmount,
+          settledAmount,
+          remainingAmount,
+          status: 'PENDING',
+          notes: dto.notes,
+        },
+        include: settlementInclude,
+      });
     });
 
     return settlement;
@@ -211,21 +239,45 @@ export class SettlementService {
       throw ApiError.badRequest('Cannot create settlements for future dates');
     }
 
-    const lastSettlement = await prisma.settlement.findFirst({
-      where: { centerId },
+    const lastApproved = await prisma.settlement.findFirst({
+      where: { centerId, status: 'APPROVED' },
       orderBy: { settlementDate: 'desc' },
     });
+
+    // Block while a settlement after the last approved is still PENDING
+    const pending = await prisma.settlement.findFirst({
+      where: {
+        centerId,
+        status: 'PENDING',
+        ...(lastApproved ? { settlementDate: { gt: lastApproved.settlementDate } } : {}),
+      },
+      orderBy: { settlementDate: 'asc' },
+    });
+    if (pending) {
+      throw ApiError.badRequest(
+        `Settlement for ${pending.settlementDate.toISOString().slice(0, 10)} is pending approval. Approve or reject it before creating a new one.`
+      );
+    }
 
     let startDateObj: Date;
     let initialCarryForward: number;
 
-    if (lastSettlement) {
-      startDateObj = new Date(lastSettlement.settlementDate);
+    if (lastApproved) {
+      startDateObj = new Date(lastApproved.settlementDate);
       startDateObj.setHours(0, 0, 0, 0);
       startDateObj.setDate(startDateObj.getDate() + 1);
-      initialCarryForward = Number(lastSettlement.remainingAmount);
+      initialCarryForward = Number(lastApproved.remainingAmount);
     } else {
-      startDateObj = new Date(endDateObj);
+      const earliest = await prisma.settlement.findFirst({
+        where: { centerId },
+        orderBy: { settlementDate: 'asc' },
+      });
+      if (earliest) {
+        startDateObj = new Date(earliest.settlementDate);
+        startDateObj.setHours(0, 0, 0, 0);
+      } else {
+        startDateObj = new Date(endDateObj);
+      }
       initialCarryForward = 0;
     }
 
@@ -343,6 +395,17 @@ export class SettlementService {
     // then fetch the full records with relations after commit.
     const createdIds = await prisma.$transaction(
       async (tx) => {
+        // Re-settle: remove any rejected settlements in this range so they can be recreated
+        await tx.settlement.deleteMany({
+          where: {
+            centerId: dto.centerId,
+            status: 'REJECTED',
+            settlementDate: {
+              gte: new Date(days[0].date),
+              lte: new Date(days[days.length - 1].date),
+            },
+          },
+        });
         const ids: string[] = [];
         for (let i = 0; i < days.length; i++) {
           const day = days[i];
