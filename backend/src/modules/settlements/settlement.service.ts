@@ -40,7 +40,7 @@ type BatchGroup = {
   finalAmount: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
-  days: { date: string; settledAmount: number }[];
+  days: { date: string; netAmount: number; settledAmount: number }[];
 };
 
 export type SettlementListItem =
@@ -110,6 +110,7 @@ export class SettlementService {
       createdAt: sorted[sorted.length - 1].createdAt.toISOString(),
       days: sorted.map((r) => ({
         date: toDateStr(new Date(r.settlementDate)),
+        netAmount: Number(r.netAmount),
         settledAmount: Number(r.settledAmount),
       })),
     };

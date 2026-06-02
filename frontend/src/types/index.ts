@@ -193,7 +193,7 @@ export interface BatchSettlementGroup {
   finalAmount: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
-  days: { date: string; settledAmount: number }[];
+  days: { date: string; netAmount: number; settledAmount: number }[];
 }
 
 export type SettlementListItem = Settlement | BatchSettlementGroup;

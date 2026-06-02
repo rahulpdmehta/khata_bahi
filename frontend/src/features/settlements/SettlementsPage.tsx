@@ -723,7 +723,7 @@ export const SettlementsPage: React.FC = () => {
                                 {b.days.map((d) => (
                                   <Box key={d.date} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px solid #eef2f7' }}>
                                     <Typography variant="body2" sx={{ color: '#475569' }}>{fmtDate(d.date)}</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(Math.max(0, d.settledAmount))}</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(d.netAmount)}</Typography>
                                   </Box>
                                 ))}
                               </Box>
@@ -893,11 +893,11 @@ export const SettlementsPage: React.FC = () => {
                                   <TableCell colSpan={isAdmin ? 9 : 8} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
                                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                                       <Box sx={{ py: 1.5, px: 2, backgroundColor: '#fbfaff' }}>
-                                        <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Day-wise settled</Typography>
+                                        <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Day-wise net amount</Typography>
                                         {b.days.map((d) => (
                                           <Box key={d.date} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.6, borderBottom: '1px solid #eef2f7' }}>
                                             <Typography variant="body2" sx={{ color: '#475569' }}>{fmtDate(d.date)}</Typography>
-                                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(Math.max(0, d.settledAmount))}</Typography>
+                                            <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(d.netAmount)}</Typography>
                                           </Box>
                                         ))}
                                       </Box>
