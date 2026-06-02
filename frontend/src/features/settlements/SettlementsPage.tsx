@@ -694,6 +694,13 @@ export const SettlementsPage: React.FC = () => {
                               <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Income</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(b.totalIncome)}</Typography></Box>
                               <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Expenses</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#ef4444' }}>{formatCurrency(b.totalExpenses)}</Typography></Box>
                               <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Net</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(b.netAmount)}</Typography></Box>
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Settled</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(Math.max(0, b.settledAmount))}</Typography>
+                                {b.finalAmount > 0 && b.finalAmount !== b.settledAmount && (
+                                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>of {formatCurrency(b.finalAmount)}</Typography>
+                                )}
+                              </Box>
                               {b.remainingAmount > 0 && (
                                 <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>{formatCurrency(b.remainingAmount)}</Typography></Box>
                               )}
@@ -824,6 +831,11 @@ export const SettlementsPage: React.FC = () => {
                                     <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
                                       {formatCurrency(Math.max(0, b.settledAmount))}
                                     </Typography>
+                                    {b.finalAmount > 0 && b.finalAmount !== b.settledAmount && (
+                                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                        of {formatCurrency(b.finalAmount)}
+                                      </Typography>
+                                    )}
                                   </TableCell>
                                   <TableCell><Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.7rem' }} /></TableCell>
                                   <TableCell>
