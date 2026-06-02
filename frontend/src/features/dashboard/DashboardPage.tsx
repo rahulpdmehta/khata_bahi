@@ -355,10 +355,9 @@ export const DashboardPage: React.FC = () => {
   const [recentTx, setRecentTx] = useState<Record<string, unknown>[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [settlementTotals, setSettlementTotals] = useState<{
-    totalRemainingDues: number;
-    totalCarryForward: number;
-  } | null>(null);
+  const [settlementTotals, setSettlementTotals] = useState<
+    { centerId: string; centerName: string; totalRemainingDues: number; totalCarryForward: number }[]
+  >([]);
   const [totalsLoading, setTotalsLoading] = useState(false);
 
   // Fetch centers list for admin filter
@@ -372,13 +371,12 @@ export const DashboardPage: React.FC = () => {
   }, [isAdmin]);
 
   useEffect(() => {
-    if (!isAdmin) return;
     setTotalsLoading(true);
     const params: Record<string, unknown> = {};
     if (centerId) params.centerId = centerId;
     apiClient.get('/dashboard/settlement-totals', { params })
-      .then((res) => setSettlementTotals(res.data?.data ?? null))
-      .catch(() => setSettlementTotals(null))
+      .then((res) => setSettlementTotals(Array.isArray(res.data?.data) ? res.data.data : []))
+      .catch(() => setSettlementTotals([]))
       .finally(() => setTotalsLoading(false));
   }, [centerId, isAdmin]);
 
@@ -514,38 +512,54 @@ export const DashboardPage: React.FC = () => {
         </Box>
       </Box>
 
-      {/* ── All-Time Settlement Stats (admin only, no date filter) ── */}
-      {isAdmin && (
-        <Grid container spacing={2} sx={{ mb: 2.5 }}>
-          <Grid item xs={12} sx={{ pb: 0 }}>
-            <Typography variant="caption" sx={{ color: '#475569', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              All Time
-            </Typography>
-          </Grid>
-          <Grid item xs={6} sm={4}>
-            <StatCard
-              period="All Time"
-              label="Settlement Dues"
-              value={settlementTotals?.totalRemainingDues ?? 0}
-              accentColor="#f59e0b"
-              icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />}
-              loading={totalsLoading}
-              trend="neutral"
-            />
-          </Grid>
-          <Grid item xs={6} sm={4}>
-            <StatCard
-              period="All Time"
-              label="Carry-Forward"
-              value={settlementTotals?.totalCarryForward ?? 0}
-              accentColor="#6366f1"
-              icon={<TrendingUpIcon sx={{ fontSize: 20 }} />}
-              loading={totalsLoading}
-              trend="neutral"
-            />
-          </Grid>
-        </Grid>
-      )}
+      {/* ── All-Time Settlement Dues & Carry-Forward, per center (no date filter) ── */}
+      <Card sx={{ borderRadius: '14px', mb: 2.5 }}>
+        <CardContent sx={{ p: 2.5 }}>
+          <Typography variant="caption" sx={{ color: '#475569', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', mb: 1 }}>
+            All Time — by center
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>Center</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>Settlement Dues</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>Carry-Forward</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {totalsLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton variant="text" /></TableCell>
+                      <TableCell><Skeleton variant="text" /></TableCell>
+                      <TableCell><Skeleton variant="text" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : settlementTotals.length === 0 ? (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3, color: '#94a3b8' }}>No settlement data yet</TableCell></TableRow>
+                ) : (
+                  settlementTotals.map((c) => (
+                    <TableRow key={c.centerId} hover>
+                      <TableCell>{c.centerName}</TableCell>
+                      <TableCell align="right">
+                        {c.totalRemainingDues > 0
+                          ? <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>{formatCurrency(c.totalRemainingDues)}</Typography>
+                          : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
+                      </TableCell>
+                      <TableCell align="right">
+                        {c.totalCarryForward > 0
+                          ? <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(c.totalCarryForward)}</Typography>
+                          : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
 
       {/* ── Filter Bar ── */}
       <Card sx={{ borderRadius: '14px', mb: 2.5 }}>

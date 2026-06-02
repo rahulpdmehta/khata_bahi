@@ -327,14 +327,25 @@ export class DashboardService {
 
   async getSettlementTotals(userId: string, role: string, centerId?: string) {
     const centerFilter = await this.centerScope(userId, role, centerId);
-    const result = await prisma.settlement.aggregate({
+    const groups = await prisma.settlement.groupBy({
+      by: ['centerId'],
       where: centerFilter,
       _sum: { remainingAmount: true, carryForwardAmount: true },
     });
-    return {
-      totalRemainingDues: Number(result._sum.remainingAmount ?? 0),
-      totalCarryForward: Number(result._sum.carryForwardAmount ?? 0),
-    };
+    const centerIds = groups.map((g) => g.centerId);
+    const centers = await prisma.center.findMany({
+      where: { id: { in: centerIds } },
+      select: { id: true, centerName: true },
+    });
+    const nameById = new Map(centers.map((c) => [c.id, c.centerName]));
+    return groups
+      .map((g) => ({
+        centerId: g.centerId,
+        centerName: nameById.get(g.centerId) ?? '',
+        totalRemainingDues: Number(g._sum.remainingAmount ?? 0),
+        totalCarryForward: Number(g._sum.carryForwardAmount ?? 0),
+      }))
+      .sort((a, b) => a.centerName.localeCompare(b.centerName));
   }
 
   private async getIncome(where: Record<string, unknown>) {
