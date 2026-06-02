@@ -29,6 +29,8 @@ export const settlementFiltersSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().default(1),
   limit: z.coerce.number().default(50),
+  // When 'true', return individual settlements without batch grouping (used by reports)
+  flat: z.enum(['true', 'false']).optional(),
 });
 
 export type CreateSettlementDto = z.infer<typeof createSettlementSchema>;

@@ -92,6 +92,9 @@ export const ReportPage: React.FC = () => {
   const [generated, setGenerated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snackOpen, setSnackOpen] = useState(false);
+  const [truncated, setTruncated] = useState(false);
+
+  const ROW_CAP = 1000;
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -149,23 +152,28 @@ export const ReportPage: React.FC = () => {
           ? apiClient.get('/expenses', { params: buildParams() })
           : Promise.resolve(null),
         fetchSe
-          ? apiClient.get('/settlements', { params: buildParams() })
+          ? apiClient.get('/settlements', { params: buildParams({ flat: 'true' }) })
           : Promise.resolve(null),
       ]);
 
+      let anyTruncated = false;
       if (txRes) {
         newTransactions = txRes.data?.data?.data ?? [];
+        if ((txRes.data?.data?.pagination?.total ?? 0) > ROW_CAP) anyTruncated = true;
       }
       if (exRes) {
         newExpenses = exRes.data?.data?.data ?? [];
+        if ((exRes.data?.data?.pagination?.total ?? 0) > ROW_CAP) anyTruncated = true;
       }
       if (seRes) {
         newSettlements = seRes.data?.data?.data ?? [];
+        if ((seRes.data?.data?.pagination?.total ?? 0) > ROW_CAP) anyTruncated = true;
       }
 
       setTransactions(newTransactions);
       setExpenses(newExpenses);
       setSettlements(newSettlements);
+      setTruncated(anyTruncated);
       setGenerated(true);
     } catch (err: unknown) {
       const msg =
@@ -179,7 +187,10 @@ export const ReportPage: React.FC = () => {
   };
 
   const totalIncome = transactions.reduce((sum, t) => sum + Number(t.amount ?? 0), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount ?? 0), 0);
+  // Only APPROVED expenses count toward the financial summary (matches dashboard/settlement logic)
+  const totalExpenses = expenses
+    .filter((e) => e.status === 'APPROVED')
+    .reduce((sum, e) => sum + Number(e.amount ?? 0), 0);
   const netProfit = totalIncome - totalExpenses;
   const settlementCount = settlements.length;
 
@@ -194,7 +205,7 @@ export const ReportPage: React.FC = () => {
     rows.push(['REPORT SUMMARY']);
     rows.push([`Date Range: ${fromDate} to ${toDate}`]);
     rows.push([]);
-    rows.push(['Total Income', 'Total Expenses', 'Net Profit', 'Settlement Count']);
+    rows.push(['Total Income', 'Total Expenses (Approved)', 'Net Profit', 'Settlement Count']);
     rows.push([
       String(totalIncome),
       String(totalExpenses),
@@ -439,6 +450,15 @@ export const ReportPage: React.FC = () => {
             </Button>
           </Box>
 
+          {/* Truncation warning */}
+          {truncated && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              This date range has more than {ROW_CAP.toLocaleString('en-IN')} records in at least
+              one section. Only the first {ROW_CAP.toLocaleString('en-IN')} are shown, so the totals
+              below are incomplete. Narrow the date range for an accurate report.
+            </Alert>
+          )}
+
           {/* Summary Card */}
           <Card sx={{ mb: 3 }}>
             <CardContent>
@@ -469,7 +489,7 @@ export const ReportPage: React.FC = () => {
                     sx={{ p: 2, textAlign: 'center', borderRadius: 2 }}
                   >
                     <Typography variant="caption" color="text.secondary">
-                      Total Expenses
+                      Total Expenses (Approved)
                     </Typography>
                     <Typography
                       variant="h6"

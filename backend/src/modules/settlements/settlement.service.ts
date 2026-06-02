@@ -405,7 +405,7 @@ export class SettlementService {
   }
 
   async findAll(userId: string, role: string, filters: SettlementFiltersDto) {
-    const { centerId, status, startDate, endDate, search, sortBy, sortOrder, page, limit } = filters;
+    const { centerId, status, startDate, endDate, search, sortBy, sortOrder, page, limit, flat } = filters;
 
     const where: Record<string, unknown> = {
       ...(await buildCenterWhereClause(userId, role, centerId)),
@@ -431,6 +431,19 @@ export class SettlementService {
       }),
       prisma.settlement.count({ where }),
     ]);
+
+    // Flat mode (reports): return every settlement as its own row, no batch grouping
+    if (flat === 'true') {
+      return {
+        data: rawData.map((s) => ({ type: 'individual' as const, ...s })),
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }
 
     // Collect distinct batchIds on this page
     const batchIds = [
