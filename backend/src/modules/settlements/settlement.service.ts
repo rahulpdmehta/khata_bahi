@@ -318,8 +318,9 @@ export class SettlementService {
       throw ApiError.badRequest('No pending days to settle for this date range');
     }
 
-    // Distribute settledAmount: all days except the last are fully settled;
-    // the last day absorbs any partial payment so the remainder carries forward.
+    // Distribute payment greedily oldest-to-newest: fill each day until budget runs out.
+    // Any shortfall from non-last days is accumulated onto the last day's remainingAmount
+    // so carry-forward is always the single last settlement's remaining balance.
     const totalFinal = days.reduce((sum, d) => sum + d.finalAmount, 0);
     const maxSettleable = Math.max(totalFinal, 0);
     const targetSettled =
@@ -327,6 +328,7 @@ export class SettlementService {
         ? Math.min(dto.settledAmount, maxSettleable)
         : totalFinal;
     let remainingBudget = targetSettled;
+    let accumulatedRemaining = 0;
     const batchId = randomUUID();
 
     // Write all settlements in one transaction; skip includes to keep it fast,
@@ -343,12 +345,15 @@ export class SettlementService {
           let settledAmount: number;
           let remainingAmount: number;
           if (!isLast) {
-            settledAmount = Math.max(0, day.finalAmount);
-            remainingAmount = 0;
-            remainingBudget -= day.finalAmount;
-          } else {
+            // Settle as much as budget allows; carry shortfall to last day
             settledAmount = Math.max(0, Math.min(remainingBudget, day.finalAmount));
-            remainingAmount = day.finalAmount - settledAmount;
+            remainingAmount = 0;
+            accumulatedRemaining += Math.max(0, day.finalAmount - settledAmount);
+            remainingBudget = Math.max(0, remainingBudget - day.finalAmount);
+          } else {
+            // Last day absorbs its own shortfall plus any unpaid from earlier days
+            settledAmount = Math.max(0, Math.min(remainingBudget, day.finalAmount));
+            remainingAmount = Math.max(0, day.finalAmount - settledAmount) + accumulatedRemaining;
           }
 
           const { id } = await tx.settlement.create({
