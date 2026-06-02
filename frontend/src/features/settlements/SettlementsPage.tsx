@@ -691,9 +691,10 @@ export const SettlementsPage: React.FC = () => {
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.25 }}>{b.centerName}</Typography>
                             <Typography variant="caption" color="text.secondary">{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Typography>
                             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mt: 1.5, mb: 1 }}>
-                              <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Income</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(b.totalIncome)}</Typography></Box>
-                              <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Expenses</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#ef4444' }}>{formatCurrency(b.totalExpenses)}</Typography></Box>
                               <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Net</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(b.netAmount)}</Typography></Box>
+                              {b.carryForwardAmount > 0 && (
+                                <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Carry Fwd</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#0ea5e9' }}>{formatCurrency(b.carryForwardAmount)}</Typography></Box>
+                              )}
                               <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Settled</Typography>
                                 <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(Math.max(0, b.settledAmount))}</Typography>
@@ -731,16 +732,18 @@ export const SettlementsPage: React.FC = () => {
                           <Typography variant="caption" color="text.secondary">{fmtDate(s.settlementDate)}</Typography>
                           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mt: 1.5, mb: 1 }}>
                             <Box>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Income</Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(Number(s.totalIncome))}</Typography>
-                            </Box>
-                            <Box>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Expenses</Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 700, color: '#ef4444' }}>{formatCurrency(Number(s.totalExpenses))}</Typography>
-                            </Box>
-                            <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Net</Typography>
                               <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(Number(s.netAmount))}</Typography>
+                            </Box>
+                            {Number(s.carryForwardAmount) > 0 && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Carry Fwd</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0ea5e9' }}>{formatCurrency(Number(s.carryForwardAmount))}</Typography>
+                              </Box>
+                            )}
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Settled</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(Math.max(0, Number(s.settledAmount)))}</Typography>
                             </Box>
                             {Number(s.remainingAmount) > 0 && (
                               <Box>
@@ -786,13 +789,10 @@ export const SettlementsPage: React.FC = () => {
                         <TableCell sortDirection={sort.field === 'settlementDate' ? sort.order : false}>
                           <TableSortLabel active={sort.field === 'settlementDate'} direction={sort.field === 'settlementDate' ? sort.order : 'desc'} onClick={() => handleSort('settlementDate')}>Date</TableSortLabel>
                         </TableCell>
-                        <TableCell sortDirection={sort.field === 'totalIncome' ? sort.order : false}>
-                          <TableSortLabel active={sort.field === 'totalIncome'} direction={sort.field === 'totalIncome' ? sort.order : 'desc'} onClick={() => handleSort('totalIncome')}>Total Income</TableSortLabel>
-                        </TableCell>
-                        <TableCell>Total Expenses</TableCell>
                         <TableCell sortDirection={sort.field === 'netAmount' ? sort.order : false}>
                           <TableSortLabel active={sort.field === 'netAmount'} direction={sort.field === 'netAmount' ? sort.order : 'desc'} onClick={() => handleSort('netAmount')}>Net Amount</TableSortLabel>
                         </TableCell>
+                        <TableCell>Last Carry Fwd</TableCell>
                         <TableCell>Settled</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Remaining</TableCell>
@@ -802,11 +802,11 @@ export const SettlementsPage: React.FC = () => {
                     <TableBody>
                       {loading
                         ? Array.from({ length: 5 }).map((_, i) => (
-                            <TableRow key={i}>{Array.from({ length: isAdmin ? 10 : 9 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
+                            <TableRow key={i}>{Array.from({ length: isAdmin ? 9 : 8 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
                           ))
                         : settlements.length === 0
                         ? (
-                          <TableRow><TableCell colSpan={isAdmin ? 10 : 9} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
+                          <TableRow><TableCell colSpan={isAdmin ? 9 : 8} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
                         )
                         : settlements.map((item) => {
                             if (item.type === 'batch') {
@@ -824,9 +824,12 @@ export const SettlementsPage: React.FC = () => {
                                   <TableCell>
                                     <Typography variant="body2">{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Typography>
                                   </TableCell>
-                                  <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(b.totalIncome)}</Typography></TableCell>
-                                  <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#ef4444' }}>{formatCurrency(b.totalExpenses)}</Typography></TableCell>
                                   <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(b.netAmount)}</Typography></TableCell>
+                                  <TableCell>
+                                    {b.carryForwardAmount > 0
+                                      ? <Typography variant="body2" sx={{ fontWeight: 600, color: '#0ea5e9' }}>{formatCurrency(b.carryForwardAmount)}</Typography>
+                                      : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
+                                  </TableCell>
                                   <TableCell>
                                     <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
                                       {formatCurrency(Math.max(0, b.settledAmount))}
@@ -869,9 +872,12 @@ export const SettlementsPage: React.FC = () => {
                                   <Typography variant="body2">{fmtDate(s.settlementDate)}</Typography>
                                   {s.createdAt && <Typography variant="caption" sx={{ color: '#64748b' }}>{(() => { try { return format(new Date(s.createdAt), 'hh:mm a'); } catch { return ''; } })()}</Typography>}
                                 </TableCell>
-                                <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(Number(s.totalIncome))}</Typography></TableCell>
-                                <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#ef4444' }}>{formatCurrency(Number(s.totalExpenses))}</Typography></TableCell>
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(Number(s.netAmount))}</Typography></TableCell>
+                                <TableCell>
+                                  {Number(s.carryForwardAmount) > 0
+                                    ? <Typography variant="body2" sx={{ fontWeight: 600, color: '#0ea5e9' }}>{formatCurrency(Number(s.carryForwardAmount))}</Typography>
+                                    : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
+                                </TableCell>
                                 <TableCell>
                                   <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
                                     {formatCurrency(Math.max(0, Number(s.settledAmount)))}

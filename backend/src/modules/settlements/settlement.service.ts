@@ -34,6 +34,7 @@ type BatchGroup = {
   totalIncome: number;
   totalExpenses: number;
   netAmount: number;
+  carryForwardAmount: number;
   settledAmount: number;
   remainingAmount: number;
   finalAmount: number;
@@ -96,6 +97,7 @@ export class SettlementService {
       totalIncome: sorted.reduce((s, r) => s + Number(r.totalIncome), 0),
       totalExpenses: sorted.reduce((s, r) => s + Number(r.totalExpenses), 0),
       netAmount: sorted.reduce((s, r) => s + Number(r.netAmount), 0),
+      carryForwardAmount: Number(sorted[0].carryForwardAmount),
       settledAmount: sorted.reduce((s, r) => s + Number(r.settledAmount), 0),
       remainingAmount: sorted.reduce((s, r) => s + Number(r.remainingAmount), 0),
       finalAmount: sorted.reduce((s, r) => s + Number(r.finalAmount), 0),

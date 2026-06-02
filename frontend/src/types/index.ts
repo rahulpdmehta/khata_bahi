@@ -187,6 +187,7 @@ export interface BatchSettlementGroup {
   totalIncome: number;
   totalExpenses: number;
   netAmount: number;
+  carryForwardAmount: number;
   settledAmount: number;
   remainingAmount: number;
   finalAmount: number;
