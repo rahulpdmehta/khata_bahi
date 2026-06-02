@@ -34,6 +34,7 @@ import {
   InputAdornment,
   TablePagination,
   Stack,
+  Collapse,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -46,6 +47,8 @@ import {
   Search as SearchIcon,
   EditNote as EditNoteIcon,
   LockOutlined as LockIcon,
+  KeyboardArrowDown as ExpandIcon,
+  KeyboardArrowUp as CollapseIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -103,6 +106,7 @@ export const SettlementsPage: React.FC = () => {
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [deleteBatchId, setDeleteBatchId] = useState<string | null>(null);
   const [rejectBatchId, setRejectBatchId] = useState<string | null>(null);
+  const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const [editRequestSettlement, setEditRequestSettlement] = useState<Settlement | null>(null);
   const [editRequestReason, setEditRequestReason] = useState('');
@@ -706,6 +710,24 @@ export const SettlementsPage: React.FC = () => {
                                 <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining</Typography><Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>{formatCurrency(b.remainingAmount)}</Typography></Box>
                               )}
                             </Box>
+                            <Button
+                              size="small"
+                              onClick={() => setExpandedBatchId(expandedBatchId === b.batchId ? null : b.batchId)}
+                              endIcon={expandedBatchId === b.batchId ? <CollapseIcon fontSize="small" /> : <ExpandIcon fontSize="small" />}
+                              sx={{ textTransform: 'none', color: '#6366f1', fontWeight: 600, fontSize: '0.75rem', px: 0 }}
+                            >
+                              {expandedBatchId === b.batchId ? 'Hide days' : 'Show days'}
+                            </Button>
+                            <Collapse in={expandedBatchId === b.batchId} timeout="auto" unmountOnExit>
+                              <Box sx={{ mb: 1 }}>
+                                {b.days.map((d) => (
+                                  <Box key={d.date} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px solid #eef2f7' }}>
+                                    <Typography variant="body2" sx={{ color: '#475569' }}>{fmtDate(d.date)}</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(Math.max(0, d.settledAmount))}</Typography>
+                                  </Box>
+                                ))}
+                              </Box>
+                            </Collapse>
                             {isAdmin && (
                               <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
                                 {b.status === 'PENDING' && (
@@ -812,12 +834,19 @@ export const SettlementsPage: React.FC = () => {
                             if (item.type === 'batch') {
                               const b = item as BatchSettlementGroup;
                               const sc = statusConfig[b.status];
+                              const isExpanded = expandedBatchId === b.batchId;
                               return (
-                                <TableRow key={b.batchId} hover sx={{ backgroundColor: '#f8f7ff' }}>
+                                <React.Fragment key={b.batchId}>
+                                <TableRow hover sx={{ backgroundColor: '#f8f7ff' }}>
                                   <TableCell>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                      <Chip label="BATCH" size="small" sx={{ backgroundColor: '#6366f1', color: '#fff', fontWeight: 700, fontSize: '0.65rem', width: 'fit-content' }} />
-                                      <Typography variant="caption" sx={{ color: '#64748b' }}>{b.count} settlements</Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <IconButton size="small" onClick={() => setExpandedBatchId(isExpanded ? null : b.batchId)} sx={{ color: '#6366f1' }}>
+                                        {isExpanded ? <CollapseIcon fontSize="small" /> : <ExpandIcon fontSize="small" />}
+                                      </IconButton>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                        <Chip label="BATCH" size="small" sx={{ backgroundColor: '#6366f1', color: '#fff', fontWeight: 700, fontSize: '0.65rem', width: 'fit-content' }} />
+                                        <Typography variant="caption" sx={{ color: '#64748b' }}>{b.count} settlements</Typography>
+                                      </Box>
                                     </Box>
                                   </TableCell>
                                   <TableCell>{b.centerName}</TableCell>
@@ -860,6 +889,22 @@ export const SettlementsPage: React.FC = () => {
                                     )}
                                   </TableCell>
                                 </TableRow>
+                                <TableRow>
+                                  <TableCell colSpan={isAdmin ? 9 : 8} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
+                                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                      <Box sx={{ py: 1.5, px: 2, backgroundColor: '#fbfaff' }}>
+                                        <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Day-wise settled</Typography>
+                                        {b.days.map((d) => (
+                                          <Box key={d.date} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.6, borderBottom: '1px solid #eef2f7' }}>
+                                            <Typography variant="body2" sx={{ color: '#475569' }}>{fmtDate(d.date)}</Typography>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(Math.max(0, d.settledAmount))}</Typography>
+                                          </Box>
+                                        ))}
+                                      </Box>
+                                    </Collapse>
+                                  </TableCell>
+                                </TableRow>
+                                </React.Fragment>
                               );
                             }
                             const s = item as Settlement;
