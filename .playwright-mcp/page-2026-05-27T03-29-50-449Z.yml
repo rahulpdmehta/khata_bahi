@@ -1,0 +1,263 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e11]:
+          - heading "Insurance Zone" [level=6] [ref=e12]
+          - text: Admin Portal
+      - generic [ref=e13]:
+        - generic [ref=e14]: Main Menu
+        - list [ref=e15]:
+          - listitem [ref=e16]:
+            - button "Dashboard" [ref=e17] [cursor=pointer]:
+              - img [ref=e19]
+              - generic [ref=e22]: Dashboard
+          - listitem [ref=e23]:
+            - button "Transactions" [ref=e24] [cursor=pointer]:
+              - img [ref=e26]
+              - generic [ref=e29]: Transactions
+          - listitem [ref=e30]:
+            - button "Expenses" [ref=e31] [cursor=pointer]:
+              - img [ref=e33]
+              - generic [ref=e36]: Expenses
+          - listitem [ref=e37]:
+            - button "Settlements" [ref=e38] [cursor=pointer]:
+              - img [ref=e40]
+              - generic [ref=e43]: Settlements
+          - listitem [ref=e45]:
+            - button "Approvals" [ref=e46] [cursor=pointer]:
+              - img [ref=e48]
+              - generic [ref=e51]: Approvals
+          - listitem [ref=e52]:
+            - button "Reports" [ref=e53] [cursor=pointer]:
+              - img [ref=e55]
+              - generic [ref=e58]: Reports
+          - listitem [ref=e59]:
+            - button "Customers" [ref=e60] [cursor=pointer]:
+              - img [ref=e62]
+              - generic [ref=e67]: Customers
+          - listitem [ref=e68]:
+            - button "Management" [ref=e69] [cursor=pointer]:
+              - img [ref=e71]
+              - generic [ref=e75]: Management
+        - separator [ref=e76]
+        - button "Generate Report" [ref=e78] [cursor=pointer]:
+          - img [ref=e80]
+          - text: Generate Report
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]: A
+          - generic [ref=e85]:
+            - paragraph [ref=e86]: admin
+            - text: ADMIN
+        - button "Logout" [ref=e87] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e92]: Logout
+  - main [ref=e94]:
+    - generic [ref=e99]:
+      - generic [ref=e100]:
+        - heading "Settlements" [level=5] [ref=e101]
+        - paragraph [ref=e102]: Daily settlement management
+      - generic [ref=e103]:
+        - tablist [ref=e107]:
+          - tab "Create Settlement" [ref=e108] [cursor=pointer]:
+            - img [ref=e109]
+            - text: Create Settlement
+          - tab "Settlement History" [active] [selected] [ref=e111] [cursor=pointer]:
+            - img [ref=e112]
+            - text: Settlement History
+        - generic [ref=e115]:
+          - generic [ref=e116]:
+            - generic [ref=e118]:
+              - img [ref=e120]
+              - textbox "Search settlement no" [ref=e122]
+              - group
+            - generic [ref=e123]:
+              - generic [ref=e124]: From Date
+              - generic [ref=e125]:
+                - textbox "From Date" [ref=e126]
+                - group:
+                  - generic: From Date
+            - generic [ref=e127]:
+              - generic [ref=e128]: To Date
+              - generic [ref=e129]:
+                - textbox "To Date" [ref=e130]
+                - group:
+                  - generic: To Date
+            - generic [ref=e131]:
+              - generic: Center
+              - generic [ref=e132]:
+                - combobox "Center" [ref=e133] [cursor=pointer]
+                - textbox
+                - img
+                - group:
+                  - generic: Center
+            - generic [ref=e134]:
+              - generic: Status
+              - generic [ref=e135]:
+                - combobox "Status" [ref=e136] [cursor=pointer]
+                - textbox
+                - img
+                - group:
+                  - generic: Status
+          - table [ref=e138]:
+            - rowgroup [ref=e139]:
+              - row "Settlement No Center Date Total Income Total Expenses Net Amount Settled Status Remaining Actions" [ref=e140]:
+                - columnheader "Settlement No" [ref=e141]
+                - columnheader "Center" [ref=e142]
+                - columnheader "Date" [ref=e143]:
+                  - button "Date" [ref=e144] [cursor=pointer]:
+                    - text: Date
+                    - img [ref=e145]
+                - columnheader "Total Income" [ref=e147]:
+                  - button "Total Income" [ref=e148] [cursor=pointer]:
+                    - text: Total Income
+                    - img [ref=e149]
+                - columnheader "Total Expenses" [ref=e151]
+                - columnheader "Net Amount" [ref=e152]:
+                  - button "Net Amount" [ref=e153] [cursor=pointer]:
+                    - text: Net Amount
+                    - img [ref=e154]
+                - columnheader "Settled" [ref=e156]
+                - columnheader "Status" [ref=e157]
+                - columnheader "Remaining" [ref=e158]
+                - columnheader "Actions" [ref=e159]
+            - rowgroup [ref=e160]:
+              - row "SET1779690899713 ARUN CRANE SERVICE May 25, 2026 12:04 PM ₹400 ₹0 ₹400 ₹300 of ₹400 Pending ₹100 Approve Reject Delete" [ref=e161]:
+                - cell "SET1779690899713" [ref=e162]:
+                  - paragraph [ref=e163]: SET1779690899713
+                - cell "ARUN CRANE SERVICE" [ref=e164]
+                - cell "May 25, 2026 12:04 PM" [ref=e165]:
+                  - paragraph [ref=e166]: May 25, 2026
+                  - text: 12:04 PM
+                - cell "₹400" [ref=e167]:
+                  - paragraph [ref=e168]: ₹400
+                - cell "₹0" [ref=e169]:
+                  - paragraph [ref=e170]: ₹0
+                - cell "₹400" [ref=e171]:
+                  - paragraph [ref=e172]: ₹400
+                - cell "₹300 of ₹400" [ref=e173]:
+                  - paragraph [ref=e174]: ₹300
+                  - generic [ref=e175]: of ₹400
+                - cell "Pending" [ref=e176]:
+                  - generic [ref=e178]: Pending
+                - cell "₹100" [ref=e179]:
+                  - paragraph [ref=e180]: ₹100
+                - cell "Approve Reject Delete" [ref=e181]:
+                  - generic [ref=e182]:
+                    - button "Approve" [ref=e183] [cursor=pointer]:
+                      - img [ref=e184]
+                    - button "Reject" [ref=e186] [cursor=pointer]:
+                      - img [ref=e187]
+                    - button "Delete" [ref=e189] [cursor=pointer]:
+                      - img [ref=e190]
+              - row "SET1779809430887 Komal Motor May 25, 2026 09:00 PM ₹3,750 ₹100 ₹3,650 ₹3,500 of ₹3,650 Pending ₹150 Approve Reject Delete" [ref=e192]:
+                - cell "SET1779809430887" [ref=e193]:
+                  - paragraph [ref=e194]: SET1779809430887
+                - cell "Komal Motor" [ref=e195]
+                - cell "May 25, 2026 09:00 PM" [ref=e196]:
+                  - paragraph [ref=e197]: May 25, 2026
+                  - text: 09:00 PM
+                - cell "₹3,750" [ref=e198]:
+                  - paragraph [ref=e199]: ₹3,750
+                - cell "₹100" [ref=e200]:
+                  - paragraph [ref=e201]: ₹100
+                - cell "₹3,650" [ref=e202]:
+                  - paragraph [ref=e203]: ₹3,650
+                - cell "₹3,500 of ₹3,650" [ref=e204]:
+                  - paragraph [ref=e205]: ₹3,500
+                  - generic [ref=e206]: of ₹3,650
+                - cell "Pending" [ref=e207]:
+                  - generic [ref=e209]: Pending
+                - cell "₹150" [ref=e210]:
+                  - paragraph [ref=e211]: ₹150
+                - cell "Approve Reject Delete" [ref=e212]:
+                  - generic [ref=e213]:
+                    - button "Approve" [ref=e214] [cursor=pointer]:
+                      - img [ref=e215]
+                    - button "Reject" [ref=e217] [cursor=pointer]:
+                      - img [ref=e218]
+                    - button "Delete" [ref=e220] [cursor=pointer]:
+                      - img [ref=e221]
+              - row "SET1779545772886 ARUN CRANE SERVICE May 23, 2026 07:46 PM ₹250 ₹0 ₹250 ₹0 of ₹300 Approved — Delete" [ref=e223]:
+                - cell "SET1779545772886" [ref=e224]:
+                  - paragraph [ref=e225]: SET1779545772886
+                - cell "ARUN CRANE SERVICE" [ref=e226]
+                - cell "May 23, 2026 07:46 PM" [ref=e227]:
+                  - paragraph [ref=e228]: May 23, 2026
+                  - text: 07:46 PM
+                - cell "₹250" [ref=e229]:
+                  - paragraph [ref=e230]: ₹250
+                - cell "₹0" [ref=e231]:
+                  - paragraph [ref=e232]: ₹0
+                - cell "₹250" [ref=e233]:
+                  - paragraph [ref=e234]: ₹250
+                - cell "₹0 of ₹300" [ref=e235]:
+                  - paragraph [ref=e236]: ₹0
+                  - generic [ref=e237]: of ₹300
+                - cell "Approved" [ref=e238]:
+                  - generic [ref=e240]: Approved
+                - cell "—" [ref=e241]:
+                  - paragraph [ref=e242]: —
+                - cell "Delete" [ref=e243]:
+                  - button "Delete" [ref=e245] [cursor=pointer]:
+                    - img [ref=e246]
+              - row "SET1779023094824 New Gumla Tradars May 17, 2026 06:34 PM ₹640 ₹0 ₹640 ₹0 of ₹640 Approved — Delete" [ref=e248]:
+                - cell "SET1779023094824" [ref=e249]:
+                  - paragraph [ref=e250]: SET1779023094824
+                - cell "New Gumla Tradars" [ref=e251]
+                - cell "May 17, 2026 06:34 PM" [ref=e252]:
+                  - paragraph [ref=e253]: May 17, 2026
+                  - text: 06:34 PM
+                - cell "₹640" [ref=e254]:
+                  - paragraph [ref=e255]: ₹640
+                - cell "₹0" [ref=e256]:
+                  - paragraph [ref=e257]: ₹0
+                - cell "₹640" [ref=e258]:
+                  - paragraph [ref=e259]: ₹640
+                - cell "₹0 of ₹640" [ref=e260]:
+                  - paragraph [ref=e261]: ₹0
+                  - generic [ref=e262]: of ₹640
+                - cell "Approved" [ref=e263]:
+                  - generic [ref=e265]: Approved
+                - cell "—" [ref=e266]:
+                  - paragraph [ref=e267]: —
+                - cell "Delete" [ref=e268]:
+                  - button "Delete" [ref=e270] [cursor=pointer]:
+                    - img [ref=e271]
+              - row "SET1778778958514 Komal Motor May 13, 2026 10:45 PM ₹3,380 ₹140 ₹3,240 ₹0 of ₹4,740 Approved — Delete" [ref=e273]:
+                - cell "SET1778778958514" [ref=e274]:
+                  - paragraph [ref=e275]: SET1778778958514
+                - cell "Komal Motor" [ref=e276]
+                - cell "May 13, 2026 10:45 PM" [ref=e277]:
+                  - paragraph [ref=e278]: May 13, 2026
+                  - text: 10:45 PM
+                - cell "₹3,380" [ref=e279]:
+                  - paragraph [ref=e280]: ₹3,380
+                - cell "₹140" [ref=e281]:
+                  - paragraph [ref=e282]: ₹140
+                - cell "₹3,240" [ref=e283]:
+                  - paragraph [ref=e284]: ₹3,240
+                - cell "₹0 of ₹4,740" [ref=e285]:
+                  - paragraph [ref=e286]: ₹0
+                  - generic [ref=e287]: of ₹4,740
+                - cell "Approved" [ref=e288]:
+                  - generic [ref=e290]: Approved
+                - cell "—" [ref=e291]:
+                  - paragraph [ref=e292]: —
+                - cell "Delete" [ref=e293]:
+                  - button "Delete" [ref=e295] [cursor=pointer]:
+                    - img [ref=e296]
+          - generic [ref=e299]:
+            - paragraph [ref=e300]: "Rows per page:"
+            - generic [ref=e301]:
+              - 'combobox "Rows per page: 10" [ref=e302] [cursor=pointer]': "10"
+              - textbox: "10"
+              - img
+            - paragraph [ref=e303]: 1–5 of 5
+            - generic [ref=e304]:
+              - button "Go to previous page" [disabled]:
+                - img
+              - button "Go to next page" [disabled]:
+                - img

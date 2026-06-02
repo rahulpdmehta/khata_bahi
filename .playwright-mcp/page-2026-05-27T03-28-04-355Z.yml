@@ -1,0 +1,59 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e11]:
+          - heading "Insurance Zone" [level=6] [ref=e12]
+          - text: Admin Portal
+      - generic [ref=e13]:
+        - generic [ref=e14]: Main Menu
+        - list [ref=e15]:
+          - listitem [ref=e16]:
+            - button "Dashboard" [ref=e17] [cursor=pointer]:
+              - img [ref=e19]
+              - generic [ref=e22]: Dashboard
+          - listitem [ref=e23]:
+            - button "Transactions" [ref=e24] [cursor=pointer]:
+              - img [ref=e26]
+              - generic [ref=e29]: Transactions
+          - listitem [ref=e30]:
+            - button "Expenses" [ref=e31] [cursor=pointer]:
+              - img [ref=e33]
+              - generic [ref=e36]: Expenses
+          - listitem [ref=e37]:
+            - button "Settlements" [ref=e38] [cursor=pointer]:
+              - img [ref=e40]
+              - generic [ref=e43]: Settlements
+          - listitem [ref=e45]:
+            - button "Approvals" [ref=e46] [cursor=pointer]:
+              - img [ref=e48]
+              - generic [ref=e51]: Approvals
+          - listitem [ref=e52]:
+            - button "Reports" [ref=e53] [cursor=pointer]:
+              - img [ref=e55]
+              - generic [ref=e58]: Reports
+          - listitem [ref=e59]:
+            - button "Customers" [ref=e60] [cursor=pointer]:
+              - img [ref=e62]
+              - generic [ref=e67]: Customers
+          - listitem [ref=e68]:
+            - button "Management" [ref=e69] [cursor=pointer]:
+              - img [ref=e71]
+              - generic [ref=e75]: Management
+        - separator [ref=e76]
+        - button "Generate Report" [ref=e78] [cursor=pointer]:
+          - img [ref=e80]
+          - text: Generate Report
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]: A
+          - generic [ref=e85]:
+            - paragraph [ref=e86]: admin
+            - text: ADMIN
+        - button "Logout" [ref=e87] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e92]: Logout
+  - main [ref=e94]:
+    - progressbar [ref=e96]:
+      - img [ref=e97]

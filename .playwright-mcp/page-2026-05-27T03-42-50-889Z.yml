@@ -1,0 +1,188 @@
+- generic [ref=e28]:
+  - navigation [ref=e29]:
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - img [ref=e34]
+        - generic [ref=e36]:
+          - heading "Insurance Zone" [level=6] [ref=e37]
+          - text: New Gumla Tradars
+      - generic [ref=e38]:
+        - generic [ref=e39]: Main Menu
+        - list [ref=e40]:
+          - listitem [ref=e41]:
+            - button "Dashboard" [ref=e42] [cursor=pointer]:
+              - img [ref=e44]
+              - generic [ref=e47]: Dashboard
+          - listitem [ref=e49]:
+            - button "Transactions" [ref=e50] [cursor=pointer]:
+              - img [ref=e52]
+              - generic [ref=e55]: Transactions
+          - listitem [ref=e56]:
+            - button "Expenses" [ref=e57] [cursor=pointer]:
+              - img [ref=e59]
+              - generic [ref=e62]: Expenses
+          - listitem [ref=e63]:
+            - button "Settlements" [ref=e64] [cursor=pointer]:
+              - img [ref=e66]
+              - generic [ref=e69]: Settlements
+          - listitem [ref=e70]:
+            - button "Approvals" [ref=e71] [cursor=pointer]:
+              - img [ref=e73]
+              - generic [ref=e76]: Approvals
+          - listitem [ref=e77]:
+            - button "Reports" [ref=e78] [cursor=pointer]:
+              - img [ref=e80]
+              - generic [ref=e83]: Reports
+        - separator [ref=e84]
+        - button "Generate Report" [ref=e86] [cursor=pointer]:
+          - img [ref=e88]
+          - text: Generate Report
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]: S
+          - generic [ref=e93]:
+            - paragraph [ref=e94]: staff1
+            - text: STAFF
+        - button "Logout" [ref=e95] [cursor=pointer]:
+          - img [ref=e97]
+          - generic [ref=e100]: Logout
+  - main [ref=e102]:
+    - generic [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - heading "Dashboard Overview" [level=5] [ref=e106]
+          - paragraph [ref=e107]: Wednesday, May 27, 2026
+        - generic [ref=e108]:
+          - button "New Transaction" [ref=e109] [cursor=pointer]:
+            - img [ref=e111]
+            - text: New Transaction
+          - button "New Expense" [ref=e113] [cursor=pointer]:
+            - img [ref=e115]
+            - text: New Expense
+          - generic [ref=e118]: Welcome, staff1
+      - generic [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - img [ref=e123]
+            - generic [ref=e125]: Filters
+          - generic [ref=e126]:
+            - img [ref=e127]
+            - group [ref=e129]:
+              - button "Today" [pressed] [ref=e130] [cursor=pointer]: Today
+              - button "Yesterday" [ref=e131] [cursor=pointer]: Yesterday
+              - button "Last 7D" [ref=e132] [cursor=pointer]: Last 7D
+              - button "Last 30D" [ref=e133] [cursor=pointer]: Last 30D
+              - button "This Month" [ref=e134] [cursor=pointer]: This Month
+              - button "3 Months" [ref=e135] [cursor=pointer]: 3 Months
+              - button "Custom" [ref=e136] [cursor=pointer]: Custom
+          - button "Generate Report" [ref=e138] [cursor=pointer]:
+            - img [ref=e140]
+            - text: Generate Report
+        - generic: From Date
+        - generic: To Date
+      - generic [ref=e142]:
+        - generic [ref=e143]: Today
+        - generic [ref=e146]:
+          - generic [ref=e147]:
+            - img [ref=e149]
+            - img [ref=e152]
+          - text: Today
+          - paragraph [ref=e154]: Total Income
+        - generic [ref=e158]:
+          - generic [ref=e159]:
+            - img [ref=e161]
+            - img [ref=e164]
+          - text: Today
+          - paragraph [ref=e166]: Total Expenses
+        - generic [ref=e170]:
+          - generic [ref=e171]:
+            - img [ref=e173]
+            - img [ref=e176]
+          - text: Today
+          - paragraph [ref=e178]: Settlement Due
+      - generic [ref=e180]:
+        - generic [ref=e185]:
+          - heading "Payment Mode Breakdown" [level=6] [ref=e186]
+          - generic [ref=e187]: How income was received — today
+        - generic [ref=e191]:
+          - heading "Expense Split" [level=6] [ref=e192]
+          - text: By category
+      - generic [ref=e195]:
+        - generic [ref=e199]:
+          - generic [ref=e200]:
+            - heading "Income vs Expenses" [level=6] [ref=e201]
+            - generic [ref=e202]: Daily trend — today
+          - generic [ref=e203]:
+            - generic [ref=e206]: Income
+            - generic [ref=e209]: Expenses
+        - generic [ref=e216]:
+          - text: Workflow Status
+          - heading "Pending Approvals" [level=6] [ref=e217]
+          - generic [ref=e218]:
+            - generic [ref=e220]:
+              - img [ref=e221]
+              - paragraph [ref=e223]: Awaiting Review
+            - generic [ref=e226]:
+              - img [ref=e227]
+              - paragraph [ref=e229]: Approved Today
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - img [ref=e233]
+                - paragraph [ref=e236]: Needs Action
+              - heading "0" [level=6] [ref=e237]
+      - generic [ref=e238]:
+        - generic [ref=e241]:
+          - heading "Center Performance" [level=6] [ref=e242]
+          - generic [ref=e243]: Income — today
+        - generic [ref=e259]:
+          - heading "Profit / Loss Trend" [level=6] [ref=e260]
+          - generic [ref=e261]: Net profit — today
+      - generic [ref=e265]:
+        - generic [ref=e267]:
+          - heading "Recent Transactions" [level=6] [ref=e268]
+          - text: Latest 5 entries
+        - table [ref=e270]:
+          - rowgroup [ref=e271]:
+            - row "Transaction No. Vehicle Source Amount Date Status" [ref=e272]:
+              - columnheader "Transaction No." [ref=e273]
+              - columnheader "Vehicle" [ref=e274]
+              - columnheader "Source" [ref=e275]
+              - columnheader "Amount" [ref=e276]
+              - columnheader "Date" [ref=e277]
+              - columnheader "Status" [ref=e278]
+          - rowgroup [ref=e279]:
+            - row [ref=e280]:
+              - cell [ref=e281]
+              - cell [ref=e283]
+              - cell [ref=e285]
+              - cell [ref=e287]
+              - cell [ref=e289]
+              - cell [ref=e291]
+            - row [ref=e293]:
+              - cell [ref=e294]
+              - cell [ref=e296]
+              - cell [ref=e298]
+              - cell [ref=e300]
+              - cell [ref=e302]
+              - cell [ref=e304]
+            - row [ref=e306]:
+              - cell [ref=e307]
+              - cell [ref=e309]
+              - cell [ref=e311]
+              - cell [ref=e313]
+              - cell [ref=e315]
+              - cell [ref=e317]
+            - row [ref=e319]:
+              - cell [ref=e320]
+              - cell [ref=e322]
+              - cell [ref=e324]
+              - cell [ref=e326]
+              - cell [ref=e328]
+              - cell [ref=e330]
+            - row [ref=e332]:
+              - cell [ref=e333]
+              - cell [ref=e335]
+              - cell [ref=e337]
+              - cell [ref=e339]
+              - cell [ref=e341]
+              - cell [ref=e343]

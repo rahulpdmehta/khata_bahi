@@ -1,0 +1,238 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e11]:
+          - heading "Insurance Zone" [level=6] [ref=e12]
+          - text: New Gumla Tradars
+      - generic [ref=e13]:
+        - generic [ref=e14]: Main Menu
+        - list [ref=e15]:
+          - listitem [ref=e16]:
+            - button "Dashboard" [ref=e17] [cursor=pointer]:
+              - img [ref=e19]
+              - generic [ref=e22]: Dashboard
+          - listitem [ref=e23]:
+            - button "Transactions" [ref=e24] [cursor=pointer]:
+              - img [ref=e26]
+              - generic [ref=e29]: Transactions
+          - listitem [ref=e30]:
+            - button "Expenses" [ref=e31] [cursor=pointer]:
+              - img [ref=e33]
+              - generic [ref=e36]: Expenses
+          - listitem [ref=e37]:
+            - button "Settlements" [ref=e38] [cursor=pointer]:
+              - img [ref=e40]
+              - generic [ref=e43]: Settlements
+          - listitem [ref=e45]:
+            - button "Approvals" [ref=e46] [cursor=pointer]:
+              - img [ref=e48]
+              - generic [ref=e51]: Approvals
+          - listitem [ref=e52]:
+            - button "Reports" [ref=e53] [cursor=pointer]:
+              - img [ref=e55]
+              - generic [ref=e58]: Reports
+        - separator [ref=e59]
+        - button "Generate Report" [ref=e61] [cursor=pointer]:
+          - img [ref=e63]
+          - text: Generate Report
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]: S
+          - generic [ref=e68]:
+            - paragraph [ref=e69]: staff1
+            - text: STAFF
+        - button "Logout" [ref=e70] [cursor=pointer]:
+          - img [ref=e72]
+          - generic [ref=e75]: Logout
+  - main [ref=e77]:
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - heading "Settlements" [level=5] [ref=e84]
+        - paragraph [ref=e85]: Daily settlement management
+      - generic [ref=e86]:
+        - tablist [ref=e90]:
+          - tab "Create Settlement" [selected] [ref=e91] [cursor=pointer]:
+            - img [ref=e92]
+            - text: Create Settlement
+          - tab "Settlement History" [ref=e94] [cursor=pointer]:
+            - img [ref=e95]
+            - text: Settlement History
+        - generic [ref=e99]:
+          - generic [ref=e101]:
+            - generic [ref=e102]: Center *
+            - generic [ref=e103]:
+              - combobox "Center * New Gumla Tradars (PC001)" [ref=e104] [cursor=pointer]: New Gumla Tradars (PC001)
+              - textbox: 68d0d396-e37e-405b-8743-9ab64f55a1ba
+              - img
+              - group:
+                - generic: Center *
+          - generic [ref=e106]:
+            - generic [ref=e107]: Settle Up To *
+            - generic [ref=e108]:
+              - textbox "Settle Up To *" [ref=e109]: 2026-05-27
+              - group:
+                - generic: Settle Up To *
+            - paragraph [ref=e110]: "Last settled: May 17, 2026"
+          - button "Preview Pending Days" [ref=e112] [cursor=pointer]:
+            - img [ref=e114]
+            - text: Preview Pending Days
+          - generic [ref=e116]:
+            - heading "Pending Settlements (May 18, 2026 – May 27, 2026)" [level=6] [ref=e117]
+            - generic [ref=e118]:
+              - img [ref=e119]
+              - generic [ref=e121]: Carry forward is auto-set from previous settlement. All days fully settled.
+            - table [ref=e123]:
+              - rowgroup [ref=e124]:
+                - row "Date Income Expenses Net Carry Fwd Final" [ref=e125]:
+                  - columnheader "Date" [ref=e126]
+                  - columnheader "Income" [ref=e127]
+                  - columnheader "Expenses" [ref=e128]
+                  - columnheader "Net" [ref=e129]
+                  - columnheader "Carry Fwd" [ref=e130]:
+                    - generic [ref=e131]:
+                      - img [ref=e132]
+                      - text: Carry Fwd
+                  - columnheader "Final" [ref=e134]
+              - rowgroup [ref=e135]:
+                - row "May 18, 2026 ₹410 ₹0 ₹410 ₹0 ₹410" [ref=e136]:
+                  - cell "May 18, 2026" [ref=e137]
+                  - cell "₹410" [ref=e138]:
+                    - paragraph [ref=e139]: ₹410
+                  - cell "₹0" [ref=e140]:
+                    - paragraph [ref=e141]: ₹0
+                  - cell "₹410" [ref=e142]:
+                    - paragraph [ref=e143]: ₹410
+                  - cell "₹0" [ref=e144]:
+                    - paragraph [ref=e145]: ₹0
+                  - cell "₹410" [ref=e146]:
+                    - paragraph [ref=e147]: ₹410
+                - row "May 19, 2026 ₹500 ₹0 ₹500 ₹0 ₹500" [ref=e148]:
+                  - cell "May 19, 2026" [ref=e149]
+                  - cell "₹500" [ref=e150]:
+                    - paragraph [ref=e151]: ₹500
+                  - cell "₹0" [ref=e152]:
+                    - paragraph [ref=e153]: ₹0
+                  - cell "₹500" [ref=e154]:
+                    - paragraph [ref=e155]: ₹500
+                  - cell "₹0" [ref=e156]:
+                    - paragraph [ref=e157]: ₹0
+                  - cell "₹500" [ref=e158]:
+                    - paragraph [ref=e159]: ₹500
+                - row "May 20, 2026 ₹750 ₹0 ₹750 ₹0 ₹750" [ref=e160]:
+                  - cell "May 20, 2026" [ref=e161]
+                  - cell "₹750" [ref=e162]:
+                    - paragraph [ref=e163]: ₹750
+                  - cell "₹0" [ref=e164]:
+                    - paragraph [ref=e165]: ₹0
+                  - cell "₹750" [ref=e166]:
+                    - paragraph [ref=e167]: ₹750
+                  - cell "₹0" [ref=e168]:
+                    - paragraph [ref=e169]: ₹0
+                  - cell "₹750" [ref=e170]:
+                    - paragraph [ref=e171]: ₹750
+                - row "May 21, 2026 ₹1,580 ₹115 ₹1,465 ₹0 ₹1,465" [ref=e172]:
+                  - cell "May 21, 2026" [ref=e173]
+                  - cell "₹1,580" [ref=e174]:
+                    - paragraph [ref=e175]: ₹1,580
+                  - cell "₹115" [ref=e176]:
+                    - paragraph [ref=e177]: ₹115
+                  - cell "₹1,465" [ref=e178]:
+                    - paragraph [ref=e179]: ₹1,465
+                  - cell "₹0" [ref=e180]:
+                    - paragraph [ref=e181]: ₹0
+                  - cell "₹1,465" [ref=e182]:
+                    - paragraph [ref=e183]: ₹1,465
+                - row "May 22, 2026 ₹330 ₹100 ₹230 ₹0 ₹230" [ref=e184]:
+                  - cell "May 22, 2026" [ref=e185]
+                  - cell "₹330" [ref=e186]:
+                    - paragraph [ref=e187]: ₹330
+                  - cell "₹100" [ref=e188]:
+                    - paragraph [ref=e189]: ₹100
+                  - cell "₹230" [ref=e190]:
+                    - paragraph [ref=e191]: ₹230
+                  - cell "₹0" [ref=e192]:
+                    - paragraph [ref=e193]: ₹0
+                  - cell "₹230" [ref=e194]:
+                    - paragraph [ref=e195]: ₹230
+                - row "May 23, 2026 ₹120 ₹120 ₹0 ₹0 ₹0" [ref=e196]:
+                  - cell "May 23, 2026" [ref=e197]
+                  - cell "₹120" [ref=e198]:
+                    - paragraph [ref=e199]: ₹120
+                  - cell "₹120" [ref=e200]:
+                    - paragraph [ref=e201]: ₹120
+                  - cell "₹0" [ref=e202]:
+                    - paragraph [ref=e203]: ₹0
+                  - cell "₹0" [ref=e204]:
+                    - paragraph [ref=e205]: ₹0
+                  - cell "₹0" [ref=e206]:
+                    - paragraph [ref=e207]: ₹0
+                - row "May 24, 2026 ₹100 ₹100 ₹0 ₹0 ₹0" [ref=e208]:
+                  - cell "May 24, 2026" [ref=e209]
+                  - cell "₹100" [ref=e210]:
+                    - paragraph [ref=e211]: ₹100
+                  - cell "₹100" [ref=e212]:
+                    - paragraph [ref=e213]: ₹100
+                  - cell "₹0" [ref=e214]:
+                    - paragraph [ref=e215]: ₹0
+                  - cell "₹0" [ref=e216]:
+                    - paragraph [ref=e217]: ₹0
+                  - cell "₹0" [ref=e218]:
+                    - paragraph [ref=e219]: ₹0
+                - row "May 25, 2026 ₹200 ₹100 ₹100 ₹0 ₹100" [ref=e220]:
+                  - cell "May 25, 2026" [ref=e221]
+                  - cell "₹200" [ref=e222]:
+                    - paragraph [ref=e223]: ₹200
+                  - cell "₹100" [ref=e224]:
+                    - paragraph [ref=e225]: ₹100
+                  - cell "₹100" [ref=e226]:
+                    - paragraph [ref=e227]: ₹100
+                  - cell "₹0" [ref=e228]:
+                    - paragraph [ref=e229]: ₹0
+                  - cell "₹100" [ref=e230]:
+                    - paragraph [ref=e231]: ₹100
+                - row "May 26, 2026 ₹340 ₹100 ₹240 ₹0 ₹240" [ref=e232]:
+                  - cell "May 26, 2026" [ref=e233]
+                  - cell "₹340" [ref=e234]:
+                    - paragraph [ref=e235]: ₹340
+                  - cell "₹100" [ref=e236]:
+                    - paragraph [ref=e237]: ₹100
+                  - cell "₹240" [ref=e238]:
+                    - paragraph [ref=e239]: ₹240
+                  - cell "₹0" [ref=e240]:
+                    - paragraph [ref=e241]: ₹0
+                  - cell "₹240" [ref=e242]:
+                    - paragraph [ref=e243]: ₹240
+                - row "May 27, 2026 ₹0 ₹0 ₹0 ₹0 ₹0" [ref=e244]:
+                  - cell "May 27, 2026" [ref=e245]
+                  - cell "₹0" [ref=e246]:
+                    - paragraph [ref=e247]: ₹0
+                  - cell "₹0" [ref=e248]:
+                    - paragraph [ref=e249]: ₹0
+                  - cell "₹0" [ref=e250]:
+                    - paragraph [ref=e251]: ₹0
+                  - cell "₹0" [ref=e252]:
+                    - paragraph [ref=e253]: ₹0
+                  - cell "₹0" [ref=e254]:
+                    - paragraph [ref=e255]: ₹0
+                - row "Total (10 days) ₹4,330 ₹635 ₹3,695 ₹0 ₹3,695" [ref=e256]:
+                  - cell "Total (10 days)" [ref=e257]
+                  - cell "₹4,330" [ref=e258]
+                  - cell "₹635" [ref=e259]
+                  - cell "₹3,695" [ref=e260]
+                  - cell "₹0" [ref=e261]
+                  - cell "₹3,695" [ref=e262]
+          - generic [ref=e264]:
+            - generic: Notes (optional — applied to all settlements)
+            - generic [ref=e265]:
+              - textbox "Notes (optional — applied to all settlements)" [ref=e266]
+              - group:
+                - generic: Notes (optional — applied to all settlements)
+          - generic [ref=e267]:
+            - separator [ref=e268]
+            - generic [ref=e269]:
+              - button "Cancel" [ref=e270] [cursor=pointer]: Cancel
+              - button "Create 10 Settlements" [ref=e271] [cursor=pointer]:
+                - img [ref=e273]
+                - text: Create 10 Settlements

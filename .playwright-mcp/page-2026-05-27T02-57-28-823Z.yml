@@ -1,0 +1,150 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e11]:
+          - heading "Insurance Zone" [level=6] [ref=e12]
+          - text: Admin Portal
+      - generic [ref=e13]:
+        - generic [ref=e14]: Main Menu
+        - list [ref=e15]:
+          - listitem [ref=e16]:
+            - button "Dashboard" [ref=e17] [cursor=pointer]:
+              - img [ref=e19]
+              - generic [ref=e22]: Dashboard
+          - listitem [ref=e23]:
+            - button "Transactions" [ref=e24] [cursor=pointer]:
+              - img [ref=e26]
+              - generic [ref=e29]: Transactions
+          - listitem [ref=e30]:
+            - button "Expenses" [ref=e31] [cursor=pointer]:
+              - img [ref=e33]
+              - generic [ref=e36]: Expenses
+          - listitem [ref=e37]:
+            - button "Settlements" [ref=e38] [cursor=pointer]:
+              - img [ref=e40]
+              - generic [ref=e43]: Settlements
+          - listitem [ref=e45]:
+            - button "Approvals" [ref=e46] [cursor=pointer]:
+              - img [ref=e48]
+              - generic [ref=e51]: Approvals
+          - listitem [ref=e52]:
+            - button "Reports" [ref=e53] [cursor=pointer]:
+              - img [ref=e55]
+              - generic [ref=e58]: Reports
+          - listitem [ref=e59]:
+            - button "Customers" [ref=e60] [cursor=pointer]:
+              - img [ref=e62]
+              - generic [ref=e67]: Customers
+          - listitem [ref=e68]:
+            - button "Management" [ref=e69] [cursor=pointer]:
+              - img [ref=e71]
+              - generic [ref=e75]: Management
+        - separator [ref=e76]
+        - button "Generate Report" [ref=e78] [cursor=pointer]:
+          - img [ref=e80]
+          - text: Generate Report
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]: A
+          - generic [ref=e85]:
+            - paragraph [ref=e86]: admin
+            - text: ADMIN
+        - button "Logout" [ref=e87] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e92]: Logout
+  - main [ref=e94]:
+    - generic [ref=e99]:
+      - generic [ref=e100]:
+        - heading "Settlements" [level=5] [ref=e101]
+        - paragraph [ref=e102]: Daily settlement management
+      - generic [ref=e103]:
+        - tablist [ref=e107]:
+          - tab "Create Settlement" [selected] [ref=e108] [cursor=pointer]:
+            - img [ref=e109]
+            - text: Create Settlement
+          - tab "Settlement History" [ref=e111] [cursor=pointer]:
+            - img [ref=e112]
+            - text: Settlement History
+        - generic [ref=e116]:
+          - generic [ref=e118]:
+            - generic [ref=e119]: Center *
+            - generic [ref=e120]:
+              - combobox "Center * ARUN CRANE SERVICE (PC003)" [ref=e121] [cursor=pointer]: ARUN CRANE SERVICE (PC003)
+              - textbox: 534ff9e6-7b9d-4d69-a067-a7bcd9d50d07
+              - img
+              - group:
+                - generic: Center *
+          - generic [ref=e123]:
+            - generic [ref=e124]: Settle Up To *
+            - generic [ref=e125]:
+              - textbox "Settle Up To *" [ref=e126]: 2026-05-27
+              - group:
+                - generic: Settle Up To *
+            - paragraph [ref=e127]: "Last settled: May 25, 2026"
+          - button "Preview Pending Days" [ref=e129] [cursor=pointer]:
+            - img [ref=e133]
+            - text: Preview Pending Days
+          - generic [ref=e135]:
+            - heading "Pending Settlements (May 25, 2026 – May 26, 2026)" [level=6] [ref=e136]
+            - generic [ref=e137]:
+              - img [ref=e138]
+              - generic [ref=e140]: Carry forward is auto-set from previous settlement. All days fully settled.
+            - table [ref=e142]:
+              - rowgroup [ref=e143]:
+                - row "Date Income Expenses Net Carry Fwd Final" [ref=e144]:
+                  - columnheader "Date" [ref=e145]
+                  - columnheader "Income" [ref=e146]
+                  - columnheader "Expenses" [ref=e147]
+                  - columnheader "Net" [ref=e148]
+                  - columnheader "Carry Fwd" [ref=e149]:
+                    - generic [ref=e150]:
+                      - img [ref=e151]
+                      - text: Carry Fwd
+                  - columnheader "Final" [ref=e153]
+              - rowgroup [ref=e154]:
+                - row "May 25, 2026 ₹1,460 ₹0 ₹1,460 ₹100 ₹1,560" [ref=e155]:
+                  - cell "May 25, 2026" [ref=e156]
+                  - cell "₹1,460" [ref=e157]:
+                    - paragraph [ref=e158]: ₹1,460
+                  - cell "₹0" [ref=e159]:
+                    - paragraph [ref=e160]: ₹0
+                  - cell "₹1,460" [ref=e161]:
+                    - paragraph [ref=e162]: ₹1,460
+                  - cell "₹100" [ref=e163]:
+                    - paragraph [ref=e164]: ₹100
+                  - cell "₹1,560" [ref=e165]:
+                    - paragraph [ref=e166]: ₹1,560
+                - row "May 26, 2026 ₹880 ₹0 ₹880 ₹0 ₹880" [ref=e167]:
+                  - cell "May 26, 2026" [ref=e168]
+                  - cell "₹880" [ref=e169]:
+                    - paragraph [ref=e170]: ₹880
+                  - cell "₹0" [ref=e171]:
+                    - paragraph [ref=e172]: ₹0
+                  - cell "₹880" [ref=e173]:
+                    - paragraph [ref=e174]: ₹880
+                  - cell "₹0" [ref=e175]:
+                    - paragraph [ref=e176]: ₹0
+                  - cell "₹880" [ref=e177]:
+                    - paragraph [ref=e178]: ₹880
+                - row "Total (2 days) ₹2,340 ₹0 ₹2,340 ₹100 ₹2,440" [ref=e179]:
+                  - cell "Total (2 days)" [ref=e180]
+                  - cell "₹2,340" [ref=e181]
+                  - cell "₹0" [ref=e182]
+                  - cell "₹2,340" [ref=e183]
+                  - cell "₹100" [ref=e184]
+                  - cell "₹2,440" [ref=e185]
+          - generic [ref=e187]:
+            - generic: Notes (optional — applied to all settlements)
+            - generic [ref=e188]:
+              - textbox "Notes (optional — applied to all settlements)" [ref=e189]
+              - group:
+                - generic: Notes (optional — applied to all settlements)
+          - generic [ref=e190]:
+            - separator [ref=e191]
+            - generic [ref=e192]:
+              - button "Cancel" [ref=e193] [cursor=pointer]: Cancel
+              - button "Create 2 Settlements" [ref=e194] [cursor=pointer]:
+                - img [ref=e196]
+                - text: Create 2 Settlements
