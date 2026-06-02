@@ -693,7 +693,8 @@ export const SettlementsPage: React.FC = () => {
                               <Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.68rem' }} />
                             </Box>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.25 }}>{b.centerName}</Typography>
-                            <Typography variant="caption" color="text.secondary">{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Typography>
+                            {b.createdAt && <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>Recorded {(() => { try { return format(new Date(b.createdAt), 'MMM d, yyyy h:mm a'); } catch { return ''; } })()}</Typography>}
                             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mt: 1.5, mb: 1 }}>
                               <Box><Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Net</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(b.netAmount)}</Typography></Box>
                               {b.carryForwardAmount > 0 && (
@@ -751,7 +752,8 @@ export const SettlementsPage: React.FC = () => {
                             <Chip label={sc.label} size="small" sx={{ backgroundColor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.68rem' }} />
                           </Box>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 0.25 }}>{s.center?.centerName || '—'}</Typography>
-                          <Typography variant="caption" color="text.secondary">{fmtDate(s.settlementDate)}</Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{fmtDate(s.settlementDate)}</Typography>
+                          {s.createdAt && <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>Recorded {(() => { try { return format(new Date(s.createdAt), 'MMM d, yyyy h:mm a'); } catch { return ''; } })()}</Typography>}
                           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mt: 1.5, mb: 1 }}>
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Net</Typography>
@@ -811,6 +813,7 @@ export const SettlementsPage: React.FC = () => {
                         <TableCell sortDirection={sort.field === 'settlementDate' ? sort.order : false}>
                           <TableSortLabel active={sort.field === 'settlementDate'} direction={sort.field === 'settlementDate' ? sort.order : 'desc'} onClick={() => handleSort('settlementDate')}>Date</TableSortLabel>
                         </TableCell>
+                        <TableCell>Recorded On</TableCell>
                         <TableCell sortDirection={sort.field === 'netAmount' ? sort.order : false}>
                           <TableSortLabel active={sort.field === 'netAmount'} direction={sort.field === 'netAmount' ? sort.order : 'desc'} onClick={() => handleSort('netAmount')}>Net Amount</TableSortLabel>
                         </TableCell>
@@ -824,11 +827,11 @@ export const SettlementsPage: React.FC = () => {
                     <TableBody>
                       {loading
                         ? Array.from({ length: 5 }).map((_, i) => (
-                            <TableRow key={i}>{Array.from({ length: isAdmin ? 9 : 8 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
+                            <TableRow key={i}>{Array.from({ length: isAdmin ? 10 : 9 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
                           ))
                         : settlements.length === 0
                         ? (
-                          <TableRow><TableCell colSpan={isAdmin ? 9 : 8} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
+                          <TableRow><TableCell colSpan={isAdmin ? 10 : 9} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No settlements found</Typography></TableCell></TableRow>
                         )
                         : settlements.map((item) => {
                             if (item.type === 'batch') {
@@ -852,6 +855,11 @@ export const SettlementsPage: React.FC = () => {
                                   <TableCell>{b.centerName}</TableCell>
                                   <TableCell>
                                     <Typography variant="body2">{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Typography>
+                                  </TableCell>
+                                  <TableCell>
+                                    {b.createdAt
+                                      ? <Typography variant="body2" sx={{ color: '#475569' }}>{(() => { try { return format(new Date(b.createdAt), 'MMM d, yyyy h:mm a'); } catch { return ''; } })()}</Typography>
+                                      : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
                                   </TableCell>
                                   <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(b.netAmount)}</Typography></TableCell>
                                   <TableCell>
@@ -890,7 +898,7 @@ export const SettlementsPage: React.FC = () => {
                                   </TableCell>
                                 </TableRow>
                                 <TableRow>
-                                  <TableCell colSpan={isAdmin ? 9 : 8} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
+                                  <TableCell colSpan={isAdmin ? 10 : 9} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
                                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                                       <Box sx={{ py: 1.5, px: 2, backgroundColor: '#fbfaff' }}>
                                         <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Day-wise net amount</Typography>
@@ -915,7 +923,11 @@ export const SettlementsPage: React.FC = () => {
                                 <TableCell>{s.center?.centerName || '—'}</TableCell>
                                 <TableCell>
                                   <Typography variant="body2">{fmtDate(s.settlementDate)}</Typography>
-                                  {s.createdAt && <Typography variant="caption" sx={{ color: '#64748b' }}>{(() => { try { return format(new Date(s.createdAt), 'hh:mm a'); } catch { return ''; } })()}</Typography>}
+                                </TableCell>
+                                <TableCell>
+                                  {s.createdAt
+                                    ? <Typography variant="body2" sx={{ color: '#475569' }}>{(() => { try { return format(new Date(s.createdAt), 'MMM d, yyyy h:mm a'); } catch { return ''; } })()}</Typography>
+                                    : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
                                 </TableCell>
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(Number(s.netAmount))}</Typography></TableCell>
                                 <TableCell>
