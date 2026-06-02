@@ -17,6 +17,9 @@ backend/.env
 *.log
 logs/
 
+# Playwright MCP snapshots
+.playwright-mcp/
+
 # OS
 .DS_Store
 
