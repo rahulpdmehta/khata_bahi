@@ -11,6 +11,7 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   username: z.string().min(3).optional(),
   email: z.string().email().optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
   role: z.enum(['ADMIN', 'STAFF']).optional(),
   centerIds: z.array(z.string().uuid()).optional(),
 });

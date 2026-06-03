@@ -35,6 +35,7 @@ import {
   Tab,
   Stack,
   Divider,
+  InputAdornment,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -44,6 +45,8 @@ import {
   Delete as DeleteIcon,
   People as PeopleIcon,
   Business as CenterIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchUsers, createUser, updateUser, deleteUser } from './userSlice';
@@ -60,6 +63,7 @@ const defaultForm = {
   username: '',
   email: '',
   password: '',
+  confirmPassword: '',
   role: 'STAFF' as User['role'],
   centerIds: [] as string[],
 };
@@ -76,6 +80,7 @@ export const UserManagementPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [centerDialogUser, setCenterDialogUser] = useState<User | null>(null);
   const [centerDialogIds, setCenterDialogIds] = useState<string[]>([]);
@@ -109,6 +114,7 @@ export const UserManagementPage: React.FC = () => {
   const openAdd = () => {
     setEditingUser(null);
     setForm(defaultForm);
+    setShowPassword(false);
     setDialogOpen(true);
   };
 
@@ -118,9 +124,11 @@ export const UserManagementPage: React.FC = () => {
       username: u.username,
       email: u.email,
       password: '',
+      confirmPassword: '',
       role: u.role,
       centerIds: u.centers?.map((c) => c.id) || [],
     });
+    setShowPassword(false);
     setDialogOpen(true);
   };
 
@@ -128,7 +136,15 @@ export const UserManagementPage: React.FC = () => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
+  // Confirm-password matters only when a password is being set (always for a
+  // new user; only if the admin typed a new one when editing).
+  const passwordMismatch = !!form.password && form.password !== form.confirmPassword;
+
   const handleSubmit = async () => {
+    if (passwordMismatch) {
+      setSnack({ open: true, msg: 'Passwords do not match.', severity: 'error' });
+      return;
+    }
     setSubmitting(true);
     try {
       if (editingUser) {
@@ -334,10 +350,56 @@ export const UserManagementPage: React.FC = () => {
                 fullWidth
                 label={editingUser ? 'New Password (optional)' : 'Password *'}
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={handleFormChange}
                 size="small"
+                helperText={
+                  editingUser
+                    ? "For security the existing password can't be displayed. Leave blank to keep it unchanged."
+                    : ' '
+                }
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword((s) => !s)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label={editingUser ? 'Confirm New Password' : 'Confirm Password *'}
+                name="confirmPassword"
+                type={showPassword ? 'text' : 'password'}
+                value={form.confirmPassword}
+                onChange={handleFormChange}
+                size="small"
+                error={passwordMismatch}
+                helperText={passwordMismatch ? 'Passwords do not match' : ' '}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword((s) => !s)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -382,7 +444,7 @@ export const UserManagementPage: React.FC = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button variant="outlined" onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
+          <Button variant="contained" onClick={handleSubmit} disabled={submitting || passwordMismatch}>
             {submitting ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}
           </Button>
         </DialogActions>
