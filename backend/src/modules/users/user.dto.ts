@@ -18,8 +18,8 @@ export const updateUserSchema = z.object({
 export const userFiltersSchema = z.object({
   role: z.enum(['ADMIN', 'STAFF']).optional(),
   isActive: z.coerce.boolean().optional(),
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(50),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(1000).default(50),
 });
 
 export type CreateUserDto = z.infer<typeof createUserSchema>;

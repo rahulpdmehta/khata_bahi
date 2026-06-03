@@ -27,8 +27,8 @@ export const settlementFiltersSchema = z.object({
   search: z.string().optional(),
   sortBy: z.enum(['settlementDate', 'totalIncome', 'netAmount']).default('settlementDate'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(50),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(1000).default(50),
   // When 'true', return individual settlements without batch grouping (used by reports)
   flat: z.enum(['true', 'false']).optional(),
 });

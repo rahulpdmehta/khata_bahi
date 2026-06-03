@@ -30,8 +30,8 @@ export const expenseFiltersSchema = z.object({
   search: z.string().optional(),
   sortBy: z.enum(['expenseDate', 'amount']).default('expenseDate'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(50),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(1000).default(50),
 });
 
 export type CreateExpenseDto = z.infer<typeof createExpenseSchema>;

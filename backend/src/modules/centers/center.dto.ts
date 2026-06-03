@@ -12,8 +12,8 @@ export const updateCenterSchema = createCenterSchema.partial();
 
 export const centerFiltersSchema = z.object({
   isActive: z.coerce.boolean().optional(),
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(50),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(1000).default(50),
 });
 
 export type CreateCenterDto = z.infer<typeof createCenterSchema>;

@@ -17,8 +17,8 @@ export const reviewEditRequestSchema = z.object({
 
 export const editRequestFiltersSchema = z.object({
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(50),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(1000).default(50),
 });
 
 export type CreateEditRequestDto = z.infer<typeof createEditRequestSchema>;
