@@ -99,6 +99,7 @@ export const TransactionEntryPage: React.FC = () => {
   const [splitEntries, setSplitEntries] = useState<SplitEntry[]>([{ paymentMode: 'CASH', amount: '' }]);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ customerName?: string; customerMobile?: string }>({});
 
   const totalAmount = parseFloat(form.amount) || 0;
   const splitTotal = splitEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
@@ -189,6 +190,20 @@ export const TransactionEntryPage: React.FC = () => {
       setError(`Split amounts must add up to ₹${totalAmount}. Remaining: ₹${splitRemaining.toFixed(2)}`);
       return;
     }
+    // Customer name & mobile are mandatory and must be valid.
+    const name = form.customerName.trim();
+    const mobile = form.customerMobile.trim();
+    const fe: { customerName?: string; customerMobile?: string } = {};
+    if (!name) fe.customerName = 'Customer name is required';
+    else if (!/^[A-Za-z][A-Za-z\s.'-]{1,}$/.test(name)) fe.customerName = 'Enter a valid name (letters only, min 2 chars)';
+    if (!mobile) fe.customerMobile = 'Mobile number is required';
+    else if (!/^[6-9]\d{9}$/.test(mobile)) fe.customerMobile = 'Enter a valid 10-digit mobile number';
+    if (fe.customerName || fe.customerMobile) {
+      setFieldErrors(fe);
+      setError('Please correct the customer details.');
+      return;
+    }
+    setFieldErrors({});
     try {
       const splitPayments = splitEntries.map((e) => ({
         paymentMode: e.paymentMode as PaymentModeValue,
@@ -204,14 +219,15 @@ export const TransactionEntryPage: React.FC = () => {
           transactionDate: form.transactionDate,
           paymentMode: isSplit ? 'SPLIT' : splitEntries[0].paymentMode,
           splitPayments,
-          customerName: form.customerName || undefined,
-          customerMobile: form.customerMobile || undefined,
+          customerName: name,
+          customerMobile: mobile,
           notes: form.notes || undefined,
         } as Parameters<typeof createTransaction>[0])
       ).unwrap();
       setSuccess(true);
       setForm(emptyForm(defaultCenterId));
       setSplitEntries([{ paymentMode: 'CASH', amount: '' }]);
+      setFieldErrors({});
     } catch (err: unknown) {
       setError(typeof err === 'string' ? err : 'Failed to create transaction');
     }
@@ -458,29 +474,42 @@ export const TransactionEntryPage: React.FC = () => {
               color="linear-gradient(135deg, #475569 0%, #334155 100%)"
             />
             <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 2, mt: -1.5 }}>
-              Optional — fill in if customer details are available
+              Required — enter the customer's name and mobile number
             </Typography>
 
             <Grid container spacing={2.5}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
+                  required
                   label="Customer Name"
                   name="customerName"
                   value={form.customerName}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    handleChange(e as React.ChangeEvent<HTMLInputElement>);
+                    if (fieldErrors.customerName) setFieldErrors((f) => ({ ...f, customerName: undefined }));
+                  }}
                   placeholder="e.g. Rajesh Kumar"
+                  error={!!fieldErrors.customerName}
+                  helperText={fieldErrors.customerName}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
+                  required
                   label="Mobile Number"
                   name="customerMobile"
                   value={form.customerMobile}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setForm((prev) => ({ ...prev, customerMobile: digits }));
+                    if (fieldErrors.customerMobile) setFieldErrors((f) => ({ ...f, customerMobile: undefined }));
+                  }}
                   placeholder="e.g. 9876543210"
-                  inputProps={{ maxLength: 15 }}
+                  inputProps={{ maxLength: 10, inputMode: 'numeric' }}
+                  error={!!fieldErrors.customerMobile}
+                  helperText={fieldErrors.customerMobile}
                   InputProps={{
                     startAdornment: <InputAdornment position="start">+91</InputAdornment>,
                   }}

@@ -14,8 +14,16 @@ const createTransactionBase = z.object({
   centerId: z.string().uuid(),
   paymentMode: z.enum(TRANSACTION_PAYMENT_MODES).default('CASH'),
   splitPayments: z.array(splitPaymentSchema).optional(),
-  customerName: z.string().max(100).optional(),
-  customerMobile: z.string().max(15).optional(),
+  customerName: z
+    .string()
+    .trim()
+    .min(1, 'Customer name is required')
+    .max(100)
+    .regex(/^[A-Za-z][A-Za-z\s.'-]{1,}$/, 'Enter a valid customer name'),
+  customerMobile: z
+    .string()
+    .trim()
+    .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'),
   notes: z.string().optional(),
   transactionDate: z.string(),
 });

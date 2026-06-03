@@ -755,9 +755,9 @@ export const DashboardPage: React.FC = () => {
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
                       <Pie
-                        data={expenseBreakdown}
+                        data={expenseBreakdown.map((d) => ({ ...d, name: d.category?.categoryName ?? '—', totalAmount: Number(d.totalAmount) }))}
                         dataKey="totalAmount"
-                        nameKey="category.categoryName"
+                        nameKey="name"
                         cx="50%"
                         cy="42%"
                         outerRadius={70}

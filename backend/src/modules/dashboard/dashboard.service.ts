@@ -210,7 +210,9 @@ export class DashboardService {
 
     return result.map((r) => ({
       category: categories.find((c) => c.id === r.categoryId)!,
-      totalAmount: r._sum.amount || 0,
+      // Number-cast so JSON sends a number, not a Decimal-as-string (Recharts
+      // can't compute pie arcs from strings — matches getPaymentModeBreakdown).
+      totalAmount: Number(r._sum.amount || 0),
       count: r._count.id,
     }));
   }
