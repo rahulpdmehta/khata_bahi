@@ -148,6 +148,7 @@ export class UserService {
       data: {
         ...(dto.username && { username: dto.username }),
         ...(dto.email && { email: dto.email }),
+        ...(dto.password && { passwordHash: await bcrypt.hash(dto.password, 10) }),
         ...(dto.role && { role: dto.role }),
       },
       include: userInclude,
