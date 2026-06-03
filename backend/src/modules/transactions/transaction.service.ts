@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
 import { assertCenterAccess, buildCenterWhereClause } from '../../utils/centerAccess';
+import { assertDayNotSettled } from '../../utils/settlementLock';
 import type { CreateTransactionDto, UpdateTransactionDto, TransactionFiltersDto } from './transaction.dto';
 
 const transactionInclude = {
@@ -19,6 +20,7 @@ const transactionInclude = {
 export class TransactionService {
   async create(userId: string, role: string, dto: CreateTransactionDto) {
     await assertCenterAccess(userId, role, dto.centerId);
+    await assertDayNotSettled(dto.centerId, new Date(dto.transactionDate));
 
     const transactionNumber = `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
@@ -140,6 +142,15 @@ export class TransactionService {
       throw ApiError.badRequest('Transaction is locked and cannot be updated');
     }
 
+    // Block if the current day OR the target day (when moving the transaction) is settled
+    await assertDayNotSettled(transaction.centerId, transaction.transactionDate);
+    if (dto.transactionDate !== undefined || dto.centerId !== undefined) {
+      await assertDayNotSettled(
+        dto.centerId ?? transaction.centerId,
+        dto.transactionDate !== undefined ? new Date(dto.transactionDate) : transaction.transactionDate
+      );
+    }
+
     const updated = await prisma.transaction.update({
       where: { id },
       data: {
@@ -170,6 +181,8 @@ export class TransactionService {
     if (transaction.isLocked) {
       throw ApiError.badRequest('Transaction is locked and cannot be deleted');
     }
+
+    await assertDayNotSettled(transaction.centerId, transaction.transactionDate);
 
     await prisma.transaction.delete({ where: { id } });
 

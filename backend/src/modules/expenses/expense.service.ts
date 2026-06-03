@@ -1,11 +1,13 @@
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
 import { assertCenterAccess, buildCenterWhereClause } from '../../utils/centerAccess';
+import { assertDayNotSettled } from '../../utils/settlementLock';
 import type { CreateExpenseDto, ExpenseFiltersDto } from './expense.dto';
 
 export class ExpenseService {
   async create(userId: string, role: string, dto: CreateExpenseDto) {
     await assertCenterAccess(userId, role, dto.centerId);
+    await assertDayNotSettled(dto.centerId, new Date(dto.expenseDate));
 
     const category = await prisma.expenseCategory.findUnique({
       where: { id: dto.categoryId },
@@ -132,6 +134,9 @@ export class ExpenseService {
       throw ApiError.badRequest('Expense is not pending approval');
     }
 
+    // Approving changes the day's approved-expense total, so the day must not be settled
+    await assertDayNotSettled(expense.centerId, expense.expenseDate);
+
     const updated = await prisma.expense.update({
       where: { id: expenseId },
       data: {
@@ -188,12 +193,14 @@ export class ExpenseService {
   async deleteExpense(id: string) {
     const expense = await prisma.expense.findUnique({ where: { id } });
     if (!expense) throw ApiError.notFound('Expense not found');
+    await assertDayNotSettled(expense.centerId, expense.expenseDate);
     await prisma.expense.delete({ where: { id } });
   }
 
   async updateExpense(id: string, data: Record<string, unknown>) {
     const expense = await prisma.expense.findUnique({ where: { id } });
     if (!expense) throw ApiError.notFound('Expense not found');
+    await assertDayNotSettled(expense.centerId, expense.expenseDate);
     const updated = await prisma.expense.update({
       where: { id },
       data: {
