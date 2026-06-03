@@ -6,7 +6,7 @@ const splitPaymentSchema = z.object({
   amount: z.number().positive(),
 });
 
-export const createTransactionSchema = z.object({
+const createTransactionBase = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
   vehicleTypeId: z.string().uuid(),
   incomeSourceId: z.string().uuid(),
@@ -20,7 +20,18 @@ export const createTransactionSchema = z.object({
   transactionDate: z.string(),
 });
 
-export const updateTransactionSchema = createTransactionSchema.partial();
+// When split payments are present, they must sum to the transaction amount
+// (otherwise cash-income / settlement math is corrupted).
+export const createTransactionSchema = createTransactionBase.refine(
+  (data) => {
+    if (!data.splitPayments || data.splitPayments.length === 0) return true;
+    const sum = data.splitPayments.reduce((s, p) => s + p.amount, 0);
+    return Math.abs(sum - data.amount) < 0.01;
+  },
+  { message: 'Split payment amounts must sum to the transaction amount', path: ['splitPayments'] }
+);
+
+export const updateTransactionSchema = createTransactionBase.partial();
 
 export const transactionFiltersSchema = z.object({
   centerId: z.string().uuid().optional(),
@@ -31,8 +42,8 @@ export const transactionFiltersSchema = z.object({
   search: z.string().optional(),
   sortBy: z.enum(['transactionDate', 'amount']).default('transactionDate'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(50),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(1000).default(50),
 });
 
 export type CreateTransactionDto = z.infer<typeof createTransactionSchema>;

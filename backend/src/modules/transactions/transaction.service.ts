@@ -177,11 +177,15 @@ export class TransactionService {
   }
 
   async getMyEntries(userId: string, date?: string) {
-    const targetDate = date ? new Date(date) : new Date();
-    const start = new Date(targetDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(targetDate);
-    end.setHours(23, 59, 59, 999);
+    // transactionDate is @db.Date (date-only). Build the day window in UTC so the date
+    // part stays correct regardless of server timezone. A provided "YYYY-MM-DD" parses to
+    // UTC midnight (use its UTC parts); for "now", use the server's local calendar date.
+    const src = date ? new Date(date) : new Date();
+    const y = date ? src.getUTCFullYear() : src.getFullYear();
+    const m = date ? src.getUTCMonth() : src.getMonth();
+    const d = date ? src.getUTCDate() : src.getDate();
+    const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+    const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
 
     const transactions = await prisma.transaction.findMany({
       where: {
