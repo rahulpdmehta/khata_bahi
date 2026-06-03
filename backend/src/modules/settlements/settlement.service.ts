@@ -389,17 +389,20 @@ export class SettlementService {
       throw ApiError.badRequest('No pending days to settle for this date range');
     }
 
-    // Distribute payment greedily oldest-to-newest: fill each day until budget runs out.
-    // Any shortfall from non-last days is accumulated onto the last day's remainingAmount
-    // so carry-forward is always the single last settlement's remaining balance.
+    // Distribute payment greedily oldest-to-newest, chaining the carry-forward through the
+    // days: each day's carry-forward is the previous day's remaining balance. This keeps
+    // the per-record invariant `settledAmount + remainingAmount = finalAmount` intact for
+    // every day, while the last day's remaining naturally equals the total outstanding
+    // (which becomes the carry-forward into the next settlement).
+    const initialCarry = days[0].carryForwardAmount;
     const totalFinal = days.reduce((sum, d) => sum + d.finalAmount, 0);
     const maxSettleable = Math.max(totalFinal, 0);
     const targetSettled =
       dto.settledAmount !== undefined
         ? Math.min(dto.settledAmount, maxSettleable)
         : totalFinal;
-    let remainingBudget = targetSettled;
-    let accumulatedRemaining = 0;
+    let budget = targetSettled;
+    let carry = initialCarry;
     const batchId = randomUUID();
 
     // Write all settlements in one transaction; skip includes to keep it fast,
@@ -420,23 +423,15 @@ export class SettlementService {
         const ids: string[] = [];
         for (let i = 0; i < days.length; i++) {
           const day = days[i];
-          const isLast = i === days.length - 1;
           const settlementDate = new Date(day.date);
-          const settlementNumber = `SET${day.date.replace(/-/g, '')}${Date.now()}`;
+          const settlementNumber = `SET${day.date.replace(/-/g, '')}${Date.now()}${i}`;
 
-          let settledAmount: number;
-          let remainingAmount: number;
-          if (!isLast) {
-            // Settle as much as budget allows; carry shortfall to last day
-            settledAmount = Math.max(0, Math.min(remainingBudget, day.finalAmount));
-            remainingAmount = 0;
-            accumulatedRemaining += Math.max(0, day.finalAmount - settledAmount);
-            remainingBudget = Math.max(0, remainingBudget - day.finalAmount);
-          } else {
-            // Last day absorbs its own shortfall plus any unpaid from earlier days
-            settledAmount = Math.max(0, Math.min(remainingBudget, day.finalAmount));
-            remainingAmount = Math.max(0, day.finalAmount - settledAmount) + accumulatedRemaining;
-          }
+          const dayCarry = carry;
+          const finalAmount = day.netAmount + dayCarry;
+          const settledAmount = Math.max(0, Math.min(budget, finalAmount));
+          const remainingAmount = finalAmount - settledAmount;
+          budget = Math.max(0, budget - settledAmount);
+          carry = remainingAmount; // rolls forward to the next day
 
           const { id } = await tx.settlement.create({
             data: {
@@ -447,8 +442,8 @@ export class SettlementService {
               totalIncome: day.totalIncome,
               totalExpenses: day.totalExpenses,
               netAmount: day.netAmount,
-              carryForwardAmount: day.carryForwardAmount,
-              finalAmount: day.finalAmount,
+              carryForwardAmount: dayCarry,
+              finalAmount,
               settledAmount,
               remainingAmount,
               status: 'PENDING',
