@@ -49,10 +49,14 @@ export type SettlementListItem =
 
 // Reusable helper: aggregate income and expenses for one calendar day
 async function aggregateDayFinancials(centerId: string, date: Date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
+  // transactionDate/expenseDate are @db.Date (date-only). Build the day window in UTC
+  // so the date part stays correct regardless of server timezone (a local-midnight
+  // window in IST shifts to the previous day and wrongly pulls in its records).
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth();
+  const d = date.getUTCDate();
+  const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
 
   const directCash = await prisma.transaction.aggregate({
     where: { centerId, transactionDate: { gte: start, lte: end }, paymentMode: 'CASH' },
@@ -177,7 +181,7 @@ export class SettlementService {
         throw ApiError.badRequest('Cannot settle a date on or before an already-approved settlement.');
       }
       if (newDay.getTime() > windowStartDate.getTime()) {
-        throw ApiError.badRequest('Settle earlier pending days first — use batch creation.');
+        throw ApiError.badRequest('There are earlier unsettled or rejected days. Settle them first — use batch creation.');
       }
     }
 
@@ -198,31 +202,38 @@ export class SettlementService {
     const settledAmount =
       dto.settledAmount !== undefined ? Math.min(dto.settledAmount, finalAmount) : finalAmount;
     const remainingAmount = finalAmount - settledAmount;
-    const settlementNumber = `SET${Date.now()}`;
+    const settlementNumber = `SET${Date.now()}${randomUUID().slice(0, 8)}`;
 
-    const settlement = await prisma.$transaction(async (tx) => {
-      if (rejectedToReplaceId) {
-        await tx.settlement.delete({ where: { id: rejectedToReplaceId } });
-      }
-      return tx.settlement.create({
-        data: {
-          settlementNumber,
-          centerId: dto.centerId,
-          userId,
-          settlementDate,
-          totalIncome,
-          totalExpenses,
-          netAmount,
-          carryForwardAmount,
-          finalAmount,
-          settledAmount,
-          remainingAmount,
-          status: 'PENDING',
-          notes: dto.notes,
-        },
-        include: settlementInclude,
+    const settlement = await prisma
+      .$transaction(async (tx) => {
+        if (rejectedToReplaceId) {
+          await tx.settlement.delete({ where: { id: rejectedToReplaceId } });
+        }
+        return tx.settlement.create({
+          data: {
+            settlementNumber,
+            centerId: dto.centerId,
+            userId,
+            settlementDate,
+            totalIncome,
+            totalExpenses,
+            netAmount,
+            carryForwardAmount,
+            finalAmount,
+            settledAmount,
+            remainingAmount,
+            status: 'PENDING',
+            notes: dto.notes,
+          },
+          include: settlementInclude,
+        });
+      })
+      .catch((err: { code?: string }) => {
+        if (err.code === 'P2002') {
+          throw ApiError.conflict('A settlement already exists for this center on this date');
+        }
+        throw err;
       });
-    });
 
     return settlement;
   }
