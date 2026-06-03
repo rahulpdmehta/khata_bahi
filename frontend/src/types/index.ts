@@ -170,7 +170,9 @@ export interface Settlement {
   remainingAmount: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   approvedBy?: string;
+  approvedAt?: string;
   notes?: string;
+  rejectionReason?: string;
   batchId?: string;
   center?: Center;
   user?: Partial<User>;

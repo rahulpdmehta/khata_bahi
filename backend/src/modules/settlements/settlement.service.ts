@@ -607,7 +607,7 @@ export class SettlementService {
     return this.aggregateBatchGroup(updated);
   }
 
-  async rejectBatch(batchId: string, adminId: string, notes: string): Promise<BatchGroup> {
+  async rejectBatch(batchId: string, adminId: string, reason: string): Promise<BatchGroup> {
     const records = await prisma.settlement.findMany({
       where: { batchId },
       include: settlementInclude,
@@ -617,7 +617,7 @@ export class SettlementService {
     if (pendingIds.length === 0) throw ApiError.badRequest('No pending settlements in this batch');
     await prisma.settlement.updateMany({
       where: { id: { in: pendingIds } },
-      data: { status: 'REJECTED', approvedBy: adminId, notes },
+      data: { status: 'REJECTED', approvedBy: adminId, approvedAt: new Date(), rejectionReason: reason },
     });
     const updated = await prisma.settlement.findMany({
       where: { batchId },
@@ -650,13 +650,13 @@ export class SettlementService {
     return batchId;
   }
 
-  async reject(settlementId: string, adminId: string, notes: string) {
+  async reject(settlementId: string, adminId: string, reason: string) {
     const settlement = await prisma.settlement.findUnique({ where: { id: settlementId } });
     if (!settlement) throw ApiError.notFound('Settlement not found');
     if (settlement.status !== 'PENDING') throw ApiError.badRequest('Settlement is not pending');
     return prisma.settlement.update({
       where: { id: settlementId },
-      data: { status: 'REJECTED', approvedBy: adminId, notes },
+      data: { status: 'REJECTED', approvedBy: adminId, approvedAt: new Date(), rejectionReason: reason },
       include: settlementInclude,
     });
   }
