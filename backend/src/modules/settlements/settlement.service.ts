@@ -102,10 +102,18 @@ export class SettlementService {
       totalIncome: sorted.reduce((s, r) => s + Number(r.totalIncome), 0),
       totalExpenses: sorted.reduce((s, r) => s + Number(r.totalExpenses), 0),
       netAmount: sorted.reduce((s, r) => s + Number(r.netAmount), 0),
+      // Carry-forward is a per-batch concept: it enters once (the first day's
+      // carry-in) and the days chain it internally so the last day's remaining
+      // accumulates the full outstanding balance. Summing finalAmount /
+      // remainingAmount across the rows would double-count that internal carry
+      // (e.g. Jun 2's unpaid ₹40 appears again as Jun 3's carry-in), so the
+      // batch final = Σ net + batch carry-in, and outstanding = last day's remaining.
       carryForwardAmount: Number(sorted[0].carryForwardAmount),
       settledAmount: sorted.reduce((s, r) => s + Number(r.settledAmount), 0),
-      remainingAmount: sorted.reduce((s, r) => s + Number(r.remainingAmount), 0),
-      finalAmount: sorted.reduce((s, r) => s + Number(r.finalAmount), 0),
+      remainingAmount: Number(sorted[sorted.length - 1].remainingAmount),
+      finalAmount:
+        sorted.reduce((s, r) => s + Number(r.netAmount), 0) +
+        Number(sorted[0].carryForwardAmount),
       status: sorted.some((r) => r.status === 'PENDING')
         ? 'PENDING'
         : sorted.every((r) => r.status === 'APPROVED')
