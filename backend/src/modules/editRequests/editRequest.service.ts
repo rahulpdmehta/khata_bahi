@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
 import { assertCenterAccess } from '../../utils/centerAccess';
+import { assertDayNotSettled } from '../../utils/settlementLock';
 import type { CreateEditRequestDto, EditRequestFiltersDto } from './editRequest.dto';
 
 const editRequestInclude = {
@@ -141,6 +142,9 @@ export class EditRequestService {
       if (changes.notes !== undefined) updateData.notes = changes.notes as string;
       await prisma.settlement.update({ where: { id: editRequest.settlementId }, data: updateData });
     } else if (editRequest.resourceType === 'EXPENSE' && editRequest.expenseId) {
+      const expense = await prisma.expense.findUnique({ where: { id: editRequest.expenseId } });
+      if (!expense) throw ApiError.notFound('Expense not found');
+      await assertDayNotSettled(expense.centerId, expense.expenseDate);
       await prisma.expense.update({
         where: { id: editRequest.expenseId },
         data: {
@@ -150,6 +154,9 @@ export class EditRequestService {
         },
       });
     } else if (editRequest.transactionId) {
+      const transaction = await prisma.transaction.findUnique({ where: { id: editRequest.transactionId } });
+      if (!transaction) throw ApiError.notFound('Transaction not found');
+      await assertDayNotSettled(transaction.centerId, transaction.transactionDate);
       await prisma.transaction.update({
         where: { id: editRequest.transactionId },
         data: {
