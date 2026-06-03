@@ -627,8 +627,25 @@ export class SettlementService {
   }
 
   async deleteBatch(batchId: string): Promise<string> {
-    const count = await prisma.settlement.count({ where: { batchId } });
-    if (count === 0) throw ApiError.notFound('Batch not found');
+    const records = await prisma.settlement.findMany({
+      where: { batchId },
+      orderBy: { settlementDate: 'desc' },
+    });
+    if (records.length === 0) throw ApiError.notFound('Batch not found');
+
+    // Deleting an approved settlement that has later settlements would orphan the
+    // carry-forward chain (downstream carry-forwards were snapshotted from it).
+    if (records.some((r) => r.status === 'APPROVED')) {
+      const later = await prisma.settlement.findFirst({
+        where: { centerId: records[0].centerId, settlementDate: { gt: records[0].settlementDate } },
+      });
+      if (later) {
+        throw ApiError.badRequest(
+          'Cannot delete an approved batch that has later settlements. Delete the most recent settlements first.'
+        );
+      }
+    }
+
     await prisma.settlement.deleteMany({ where: { batchId } });
     return batchId;
   }
@@ -647,6 +664,20 @@ export class SettlementService {
   async deleteSettlement(id: string) {
     const settlement = await prisma.settlement.findUnique({ where: { id } });
     if (!settlement) throw ApiError.notFound('Settlement not found');
+
+    // Deleting an approved settlement that has later settlements would orphan the
+    // carry-forward chain (downstream carry-forwards were snapshotted from it).
+    if (settlement.status === 'APPROVED') {
+      const later = await prisma.settlement.findFirst({
+        where: { centerId: settlement.centerId, settlementDate: { gt: settlement.settlementDate } },
+      });
+      if (later) {
+        throw ApiError.badRequest(
+          'Cannot delete an approved settlement that has later settlements. Delete the most recent settlement first.'
+        );
+      }
+    }
+
     await prisma.settlement.delete({ where: { id } });
   }
 }

@@ -109,13 +109,33 @@ export class EditRequestService {
     const changes = editRequest.proposedChanges as Record<string, unknown>;
 
     if (editRequest.resourceType === 'SETTLEMENT' && editRequest.settlementId) {
+      const settlement = await prisma.settlement.findUnique({ where: { id: editRequest.settlementId } });
+      if (!settlement) throw ApiError.notFound('Settlement not found');
+
+      // Changing carry-forward or the date of a settlement that has later settlements would
+      // orphan the carry-forward chain (downstream values were snapshotted from this one).
+      const changesChainFields =
+        changes.carryForwardAmount !== undefined || changes.settlementDate !== undefined;
+      if (changesChainFields) {
+        const later = await prisma.settlement.findFirst({
+          where: { centerId: settlement.centerId, settlementDate: { gt: settlement.settlementDate } },
+        });
+        if (later) {
+          throw ApiError.badRequest(
+            'Cannot change the carry-forward or date of a settlement that has later settlements.'
+          );
+        }
+      }
+
       const updateData: Record<string, unknown> = {};
       if (changes.carryForwardAmount !== undefined) {
         const carry = Number(changes.carryForwardAmount);
-        const settlement = await prisma.settlement.findUnique({ where: { id: editRequest.settlementId } });
-        const netAmount = settlement ? Number(settlement.netAmount) : 0;
+        const netAmount = Number(settlement.netAmount);
+        const settledAmount = Number(settlement.settledAmount);
         updateData.carryForwardAmount = carry;
         updateData.finalAmount = netAmount + carry;
+        // Keep the invariant: remaining = final - settled
+        updateData.remainingAmount = netAmount + carry - settledAmount;
       }
       if (changes.settlementDate !== undefined) updateData.settlementDate = new Date(changes.settlementDate as string);
       if (changes.notes !== undefined) updateData.notes = changes.notes as string;
