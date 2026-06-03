@@ -18,6 +18,7 @@ interface SettlementState {
   pagination: { total: number; page: number; limit: number; totalPages: number } | null;
   batchPreviewDays: BatchPreviewDay[] | null;
   batchPreviewLoading: boolean;
+  batchPreviewError: string | null;
 }
 
 const initialState: SettlementState = {
@@ -27,6 +28,7 @@ const initialState: SettlementState = {
   pagination: null,
   batchPreviewDays: null,
   batchPreviewLoading: false,
+  batchPreviewError: null,
 };
 
 export const fetchSettlements = createAsyncThunk(
@@ -191,6 +193,7 @@ const settlementSlice = createSlice({
     clearBatchPreview: (state) => {
       state.batchPreviewDays = null;
       state.batchPreviewLoading = false;
+      state.batchPreviewError = null;
     },
   },
   extraReducers: (builder) => {
@@ -211,14 +214,17 @@ const settlementSlice = createSlice({
       .addCase(fetchBatchPreview.pending, (state) => {
         state.batchPreviewLoading = true;
         state.error = null;
+        state.batchPreviewError = null;
       })
       .addCase(fetchBatchPreview.fulfilled, (state, action) => {
         state.batchPreviewLoading = false;
         state.batchPreviewDays = action.payload;
+        state.batchPreviewError = null;
       })
       .addCase(fetchBatchPreview.rejected, (state, action) => {
         state.batchPreviewLoading = false;
-        state.error = action.payload as string;
+        state.batchPreviewDays = null;
+        state.batchPreviewError = action.payload as string;
       })
       .addCase(createSettlement.pending, (state) => {
         state.loading = true;

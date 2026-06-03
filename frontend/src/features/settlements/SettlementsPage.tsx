@@ -86,7 +86,7 @@ export const SettlementsPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { settlements, loading, pagination, batchPreviewDays, batchPreviewLoading } = useAppSelector((state) => state.settlements);
+  const { settlements, loading, pagination, batchPreviewDays, batchPreviewLoading, batchPreviewError } = useAppSelector((state) => state.settlements);
   const { centers } = useAppSelector((state) => state.centers);
   const isAdmin = user?.role === 'ADMIN';
 
@@ -389,6 +389,13 @@ export const SettlementsPage: React.FC = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                     <CircularProgress />
                   </Box>
+                </Grid>
+              )}
+
+              {/* Block / preview error */}
+              {batchPreviewError && !batchPreviewLoading && (
+                <Grid item xs={12}>
+                  <Alert severity="warning">{batchPreviewError}</Alert>
                 </Grid>
               )}
 
