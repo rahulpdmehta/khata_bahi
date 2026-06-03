@@ -119,6 +119,8 @@ async function main() {
     prisma.expenseCategory.create({ data: { categoryName: 'Transportation', categoryCode: 'TRANSPORT', approvalThreshold: 5000 } }),
     prisma.expenseCategory.create({ data: { categoryName: 'Marketing', categoryCode: 'MARKETING', approvalThreshold: 10000 } }),
     prisma.expenseCategory.create({ data: { categoryName: 'Miscellaneous', categoryCode: 'MISC', approvalThreshold: 5000 } }),
+    prisma.expenseCategory.create({ data: { categoryName: 'Food', categoryCode: 'FOOD', approvalThreshold: 5000 } }),
+    prisma.expenseCategory.create({ data: { categoryName: 'Other', categoryCode: 'OTHER', approvalThreshold: 5000 } }),
   ]);
   console.log('✅ Created expense categories');
 

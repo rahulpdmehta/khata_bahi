@@ -60,7 +60,7 @@ import {
 import { fetchCenters } from '../admin/centerSlice';
 import { createEditRequest } from '../editRequests/editRequestSlice';
 import type { Expense } from '../../types';
-import { PAYMENT_MODES, formatPaymentMode, type PaymentModeValue } from '../../utils/paymentModes';
+import { PAYMENT_MODES, type PaymentModeValue } from '../../utils/paymentModes';
 
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
@@ -464,8 +464,7 @@ export const ExpensesPage: React.FC = () => {
                         <TableCell sortDirection={sort.field === 'amount' ? sort.order : false}>
                           <TableSortLabel active={sort.field === 'amount'} direction={sort.field === 'amount' ? sort.order : 'desc'} onClick={() => handleSort('amount')}>Amount</TableSortLabel>
                         </TableCell>
-                        <TableCell>Payment Mode</TableCell>
-                        <TableCell>Vendor</TableCell>
+                        <TableCell>Description</TableCell>
                         <TableCell sortDirection={sort.field === 'expenseDate' ? sort.order : false}>
                           <TableSortLabel active={sort.field === 'expenseDate'} direction={sort.field === 'expenseDate' ? sort.order : 'desc'} onClick={() => handleSort('expenseDate')}>Date</TableSortLabel>
                         </TableCell>
@@ -476,11 +475,11 @@ export const ExpensesPage: React.FC = () => {
                     <TableBody>
                       {loading
                         ? Array.from({ length: 5 }).map((_, i) => (
-                            <TableRow key={i}>{Array.from({ length: isAdmin ? 9 : 8 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
+                            <TableRow key={i}>{Array.from({ length: isAdmin ? 8 : 7 }).map((__, j) => <TableCell key={j}><Skeleton variant="text" /></TableCell>)}</TableRow>
                           ))
                         : expenses.length === 0
                         ? (
-                          <TableRow><TableCell colSpan={isAdmin ? 9 : 8} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No expenses recorded yet</Typography></TableCell></TableRow>
+                          <TableRow><TableCell colSpan={isAdmin ? 8 : 7} align="center" sx={{ py: 5 }}><Typography color="text.secondary">No expenses recorded yet</Typography></TableCell></TableRow>
                         )
                         : expenses.map((exp) => {
                             const sc = statusConfig[exp.status];
@@ -490,8 +489,7 @@ export const ExpensesPage: React.FC = () => {
                                 {isAdmin && <TableCell><Typography variant="body2">{(exp as any).center?.centerName || '—'}</Typography></TableCell>}
                                 <TableCell>{exp.category?.categoryName || '—'}</TableCell>
                                 <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{formatCurrency(Number(exp.amount))}</Typography></TableCell>
-                                <TableCell><Chip label={formatPaymentMode(exp.paymentMode)} size="small" sx={{ fontSize: '0.7rem', fontWeight: 500 }} /></TableCell>
-                                <TableCell>{exp.vendorName || '—'}</TableCell>
+                                <TableCell><Typography variant="body2" sx={{ color: '#475569', maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={exp.description || ''}>{exp.description || '—'}</Typography></TableCell>
                                 <TableCell>
                                   <Typography variant="body2">{fmtDate(exp.expenseDate)}</Typography>
                                   {exp.createdAt && <Typography variant="caption" sx={{ color: '#64748b' }}>{(() => { try { return format(new Date(exp.createdAt), 'hh:mm a'); } catch { return ''; } })()}</Typography>}

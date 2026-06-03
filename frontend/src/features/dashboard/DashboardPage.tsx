@@ -351,7 +351,6 @@ export const DashboardPage: React.FC = () => {
   const [centerPerf, setCenterPerf] = useState<CenterPerformance[]>([]);
   const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseBreakdown[]>([]);
   const [paymentModeData, setPaymentModeData] = useState<{ paymentMode: string; totalAmount: number; count: number }[]>([]);
-  const [settlementDue, setSettlementDue] = useState<{ cashIncome: number; totalExpenses: number; totalSettled: number; settlementDue: number } | null>(null);
   const [recentTx, setRecentTx] = useState<Record<string, unknown>[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -385,12 +384,11 @@ export const DashboardPage: React.FC = () => {
     const { startDate, endDate, days } = presetToDates(datePreset, customFrom, customTo);
     const centerParam = centerId ? { centerId } : {};
     try {
-        const [trendRes, perfRes, breakdownRes, paymentRes, settlementDueRes, txRes, editRes] = await Promise.allSettled([
+        const [trendRes, perfRes, breakdownRes, paymentRes, txRes, editRes] = await Promise.allSettled([
           apiClient.get('/dashboard/income-vs-expense-trend', { params: { startDate, endDate, days, ...centerParam } }),
           apiClient.get('/dashboard/center-performance', { params: { startDate, endDate, days } }),
           apiClient.get('/dashboard/expense-breakdown', { params: { startDate, endDate, days, ...centerParam } }),
           apiClient.get('/dashboard/payment-mode-breakdown', { params: { startDate, endDate, days, ...centerParam } }),
-          apiClient.get('/dashboard/settlement-due', { params: { startDate, endDate, days, ...centerParam } }),
           apiClient.get('/transactions', { params: { limit: 5, page: 1, ...centerParam } }),
           apiClient.get('/edit-requests', { params: { limit: 1, status: 'PENDING' } }),
         ]);
@@ -430,11 +428,6 @@ export const DashboardPage: React.FC = () => {
           setPaymentModeData(Array.isArray(d) ? d : []);
         }
 
-        if (settlementDueRes.status === 'fulfilled') {
-          const d = settlementDueRes.value.data?.data || settlementDueRes.value.data;
-          setSettlementDue(d ?? null);
-        }
-
         if (txRes.status === 'fulfilled') {
           const d = txRes.value.data?.data?.data || txRes.value.data?.data || [];
           setRecentTx(Array.isArray(d) ? d : []);
@@ -458,6 +451,9 @@ export const DashboardPage: React.FC = () => {
   // Period totals — summed from trendData which IS filtered by the selected preset
   const periodIncome   = trendData.reduce((s, d) => s + d.income, 0);
   const periodExpenses = trendData.reduce((s, d) => s + d.expenses, 0);
+  // All-time outstanding settlement dues (till now). Center-aware (settlementTotals
+  // is fetched with the center filter) but independent of the date preset.
+  const allTimeDues    = settlementTotals.reduce((s, c) => s + c.totalRemainingDues, 0);
   const _periodProfit  = periodIncome - periodExpenses; void _periodProfit;
   const periodLabel = datePreset === 'custom' && customFrom && customTo
     ? `${fmtDate(new Date(customFrom), 'd MMM yyyy')} – ${fmtDate(new Date(customTo), 'd MMM yyyy')}`
@@ -511,55 +507,6 @@ export const DashboardPage: React.FC = () => {
           />
         </Box>
       </Box>
-
-      {/* ── All-Time Settlement Dues & Carry-Forward, per center (no date filter) ── */}
-      <Card sx={{ borderRadius: '14px', mb: 2.5 }}>
-        <CardContent sx={{ p: 2.5 }}>
-          <Typography variant="caption" sx={{ color: '#475569', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', mb: 1 }}>
-            All Time — by center
-          </Typography>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Center</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>Settlement Dues</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>Carry-Forward</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {totalsLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton variant="text" /></TableCell>
-                      <TableCell><Skeleton variant="text" /></TableCell>
-                      <TableCell><Skeleton variant="text" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : settlementTotals.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3, color: '#94a3b8' }}>No settlement data yet</TableCell></TableRow>
-                ) : (
-                  settlementTotals.map((c) => (
-                    <TableRow key={c.centerId} hover>
-                      <TableCell>{c.centerName}</TableCell>
-                      <TableCell align="right">
-                        {c.totalRemainingDues > 0
-                          ? <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>{formatCurrency(c.totalRemainingDues)}</Typography>
-                          : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
-                      </TableCell>
-                      <TableCell align="right">
-                        {c.totalCarryForward > 0
-                          ? <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>{formatCurrency(c.totalCarryForward)}</Typography>
-                          : <Typography variant="body2" sx={{ color: '#94a3b8' }}>—</Typography>}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
 
       {/* ── Filter Bar ── */}
       <Card sx={{ borderRadius: '14px', mb: 2.5 }}>
@@ -689,12 +636,12 @@ export const DashboardPage: React.FC = () => {
         </Grid>
         <Grid item xs={6} sm={4}>
           <StatCard
-            period={periodLabel}
-            label="Settlement Due"
-            value={settlementDue?.settlementDue ?? 0}
+            period="Till Now"
+            label="Settlement Dues"
+            value={allTimeDues}
             accentColor="#f59e0b"
             icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />}
-            loading={loading}
+            loading={totalsLoading}
             trend="neutral"
           />
         </Grid>

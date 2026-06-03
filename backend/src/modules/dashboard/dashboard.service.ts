@@ -327,24 +327,34 @@ export class DashboardService {
 
   async getSettlementTotals(userId: string, role: string, centerId?: string) {
     const centerFilter = await this.centerScope(userId, role, centerId);
-    const groups = await prisma.settlement.groupBy({
-      by: ['centerId'],
-      where: centerFilter,
-      _sum: { remainingAmount: true, carryForwardAmount: true },
+    // The outstanding for a center is NOT the sum of every settlement row's
+    // remainingAmount: a batch chains the carry-forward across its day-rows, so
+    // summing double-counts the carried balance. The running outstanding lives
+    // in the LATEST settlement's remainingAmount (the chain accumulates there),
+    // which is also what carries forward into the next settlement. Take the most
+    // recent non-rejected settlement per center via distinct + desc ordering.
+    const latest = await prisma.settlement.findMany({
+      where: { ...centerFilter, status: { not: 'REJECTED' } },
+      orderBy: [{ centerId: 'asc' }, { settlementDate: 'desc' }],
+      distinct: ['centerId'],
+      select: { centerId: true, remainingAmount: true },
     });
-    const centerIds = groups.map((g) => g.centerId);
+    const centerIds = latest.map((s) => s.centerId);
     const centers = await prisma.center.findMany({
       where: { id: { in: centerIds } },
       select: { id: true, centerName: true },
     });
     const nameById = new Map(centers.map((c) => [c.id, c.centerName]));
-    return groups
-      .map((g) => ({
-        centerId: g.centerId,
-        centerName: nameById.get(g.centerId) ?? '',
-        totalRemainingDues: Number(g._sum.remainingAmount ?? 0),
-        totalCarryForward: Number(g._sum.carryForwardAmount ?? 0),
-      }))
+    return latest
+      .map((s) => {
+        const outstanding = Number(s.remainingAmount ?? 0);
+        return {
+          centerId: s.centerId,
+          centerName: nameById.get(s.centerId) ?? '',
+          totalRemainingDues: outstanding,
+          totalCarryForward: outstanding,
+        };
+      })
       .sort((a, b) => a.centerName.localeCompare(b.centerName));
   }
 
