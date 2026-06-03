@@ -329,35 +329,69 @@ export class DashboardService {
 
   async getSettlementTotals(userId: string, role: string, centerId?: string) {
     const centerFilter = await this.centerScope(userId, role, centerId);
-    // The outstanding for a center is NOT the sum of every settlement row's
-    // remainingAmount: a batch chains the carry-forward across its day-rows, so
-    // summing double-counts the carried balance. The running outstanding lives
-    // in the LATEST settlement's remainingAmount (the chain accumulates there),
-    // which is also what carries forward into the next settlement. Take the most
-    // recent non-rejected settlement per center via distinct + desc ordering.
-    const latest = await prisma.settlement.findMany({
+    // Settlement dues (till now), per center:
+    //   dues = cashCollected(after last settlement)
+    //          + carryForward (last settlement's remainingAmount)
+    //          − expenses(after last settlement),  floored at 0
+    // The carry-forward already captures everything up to the last settlement,
+    // so we only add cash/expenses dated strictly after it. A center with no
+    // settlement counts all cash/expenses with carryForward = 0.
+    const lastSettlements = await prisma.settlement.findMany({
       where: { ...centerFilter, status: { not: 'REJECTED' } },
       orderBy: [{ centerId: 'asc' }, { settlementDate: 'desc' }],
       distinct: ['centerId'],
-      select: { centerId: true, remainingAmount: true },
+      select: { centerId: true, settlementDate: true, remainingAmount: true },
     });
-    const centerIds = latest.map((s) => s.centerId);
+    const lastByCenter = new Map<string, { date: Date; carried: number }>(
+      lastSettlements.map((s) => [s.centerId, { date: s.settlementDate, carried: Number(s.remainingAmount ?? 0) }])
+    );
+
+    // Report every center that has a settlement or any transactions in scope.
+    const txCenters = await prisma.transaction.findMany({
+      where: centerFilter,
+      distinct: ['centerId'],
+      select: { centerId: true },
+    });
+    const centerIds = [...new Set<string>([...lastByCenter.keys(), ...txCenters.map((t) => t.centerId)])];
+
     const centers = await prisma.center.findMany({
       where: { id: { in: centerIds } },
       select: { id: true, centerName: true },
     });
-    const nameById = new Map(centers.map((c) => [c.id, c.centerName]));
-    return latest
-      .map((s) => {
-        const outstanding = Number(s.remainingAmount ?? 0);
+    const nameById = new Map<string, string>(centers.map((c) => [c.id, c.centerName] as [string, string]));
+
+    const rows = await Promise.all(
+      centerIds.map(async (id) => {
+        const last = lastByCenter.get(id);
+        const txDate = last ? { transactionDate: { gt: last.date } } : {};
+        const expDate = last ? { expenseDate: { gt: last.date } } : {};
+        const [directCash, splitCash, expenses] = await Promise.all([
+          prisma.transaction.aggregate({
+            where: { centerId: id, paymentMode: 'CASH', ...txDate },
+            _sum: { amount: true },
+          }),
+          prisma.transactionPayment.aggregate({
+            where: { paymentMode: 'CASH', transaction: { centerId: id, paymentMode: 'SPLIT', ...txDate } },
+            _sum: { amount: true },
+          }),
+          prisma.expense.aggregate({
+            where: { centerId: id, status: 'APPROVED', ...expDate },
+            _sum: { amount: true },
+          }),
+        ]);
+        const cashAfter = Number(directCash._sum.amount ?? 0) + Number(splitCash._sum.amount ?? 0);
+        const expAfter = Number(expenses._sum.amount ?? 0);
+        const dues = Math.max(0, cashAfter + (last?.carried ?? 0) - expAfter);
         return {
-          centerId: s.centerId,
-          centerName: nameById.get(s.centerId) ?? '',
-          totalRemainingDues: outstanding,
-          totalCarryForward: outstanding,
+          centerId: id,
+          centerName: nameById.get(id) ?? '',
+          totalRemainingDues: dues,
+          totalCarryForward: dues,
         };
       })
-      .sort((a, b) => a.centerName.localeCompare(b.centerName));
+    );
+
+    return rows.sort((a, b) => a.centerName.localeCompare(b.centerName));
   }
 
   private async getIncome(where: Record<string, unknown>) {

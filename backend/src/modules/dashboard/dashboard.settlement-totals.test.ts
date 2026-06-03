@@ -1,18 +1,22 @@
-// The dashboard "by center" table must show the true outstanding per center,
-// not a naive sum across the per-day settlement rows of a batch (which
-// double-counts the chained carry-forward). For ARUN's 2-day batch
-// [rem 40, rem 680], dues = 680 (last day's remaining), NOT 40 + 680 = 720.
+// Per-center "Settlement Dues (till now)" formula:
+//   dues = cashCollected(after last settlement) + carryForward(last settlement remaining)
+//          − expenses(after last settlement),  floored at 0
+// "after" = strictly after the last settlement's date; a center with no
+// settlement counts all cash/expenses with carryForward = 0.
 
-const settlementGroupBy = jest.fn();
 const settlementFindMany = jest.fn();
+const txFindMany = jest.fn();
+const txAggregate = jest.fn();
+const txPayAggregate = jest.fn();
+const expAggregate = jest.fn();
 const centerFindMany = jest.fn();
 
 jest.mock('../../config/database', () => ({
   prisma: {
-    settlement: {
-      groupBy: (...a: unknown[]) => settlementGroupBy(...a),
-      findMany: (...a: unknown[]) => settlementFindMany(...a),
-    },
+    settlement: { findMany: (...a: unknown[]) => settlementFindMany(...a) },
+    transaction: { findMany: (...a: unknown[]) => txFindMany(...a), aggregate: (...a: unknown[]) => txAggregate(...a) },
+    transactionPayment: { aggregate: (...a: unknown[]) => txPayAggregate(...a) },
+    expense: { aggregate: (...a: unknown[]) => expAggregate(...a) },
     center: { findMany: (...a: unknown[]) => centerFindMany(...a) },
   },
 }));
@@ -23,33 +27,52 @@ jest.mock('../../utils/centerAccess', () => ({
 
 import { DashboardService } from './dashboard.service';
 
-describe('DashboardService.getSettlementTotals', () => {
+type Where = { where?: { centerId?: string } };
+
+describe('DashboardService.getSettlementTotals (cash-after-last-settlement)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Old naive path (sum of all rows) would yield the buggy 720 / 40.
-    settlementGroupBy.mockResolvedValue([
-      { centerId: 'arun', _sum: { remainingAmount: 720, carryForwardAmount: 40 } },
+    // ARUN has a last settlement (Jun 3, remaining 680); OWNER has none.
+    settlementFindMany.mockResolvedValue([
+      { centerId: 'arun', settlementDate: new Date('2026-06-03'), remainingAmount: 680 },
     ]);
-    // Correct path: latest non-rejected settlement per center → Jun 3, rem 680.
-    settlementFindMany.mockResolvedValue([{ centerId: 'arun', remainingAmount: 680 }]);
-    centerFindMany.mockResolvedValue([{ id: 'arun', centerName: 'ARUN CRANE SERVICE' }]);
+    txFindMany.mockResolvedValue([{ centerId: 'arun' }, { centerId: 'owner' }]);
+    centerFindMany.mockResolvedValue([
+      { id: 'arun', centerName: 'ARUN CRANE SERVICE' },
+      { id: 'owner', centerName: 'OWNER' },
+    ]);
+    // cash collected (after last settlement, when one exists): owner 30, arun 100
+    txAggregate.mockImplementation((a: Where) =>
+      Promise.resolve({ _sum: { amount: a?.where?.centerId === 'owner' ? 30 : 100 } })
+    );
+    txPayAggregate.mockResolvedValue({ _sum: { amount: 0 } });
+    expAggregate.mockResolvedValue({ _sum: { amount: 0 } });
   });
 
-  it('reports dues as the latest settlement remaining, not the row sum', async () => {
-    const result = await new DashboardService().getSettlementTotals('admin', 'ADMIN');
-    expect(result).toHaveLength(1);
-    expect(result[0].centerName).toBe('ARUN CRANE SERVICE');
-    expect(result[0].totalRemainingDues).toBe(680); // not 720
+  const find = (rows: Array<{ centerId: string; totalRemainingDues: number }>, id: string) =>
+    rows.find((r) => r.centerId === id)!;
+
+  it('counts all cash for a center with no settlement (carryForward 0)', async () => {
+    const rows = await new DashboardService().getSettlementTotals('admin', 'ADMIN');
+    expect(find(rows, 'owner').totalRemainingDues).toBe(30);
   });
 
-  it('reports carry-forward as the outstanding rolling to next (= dues)', async () => {
-    const result = await new DashboardService().getSettlementTotals('admin', 'ADMIN');
-    expect(result[0].totalCarryForward).toBe(680); // not 40
+  it('adds carry-forward (last remaining) to cash collected after it', async () => {
+    const rows = await new DashboardService().getSettlementTotals('admin', 'ADMIN');
+    expect(find(rows, 'arun').totalRemainingDues).toBe(780); // 680 carried + 100 after
   });
 
-  it('excludes rejected settlements from the outstanding query', async () => {
+  it('only counts cash AFTER the last settlement date', async () => {
     await new DashboardService().getSettlementTotals('admin', 'ADMIN');
-    const where = settlementFindMany.mock.calls[0][0].where;
-    expect(where.status).toEqual({ not: 'REJECTED' });
+    const arunCall = txAggregate.mock.calls.find((c) => c[0]?.where?.centerId === 'arun')![0];
+    const ownerCall = txAggregate.mock.calls.find((c) => c[0]?.where?.centerId === 'owner')![0];
+    expect(arunCall.where.transactionDate).toEqual({ gt: new Date('2026-06-03') });
+    expect(ownerCall.where.transactionDate).toBeUndefined(); // no settlement → no cutoff
+  });
+
+  it('subtracts expenses after the settlement and floors at 0', async () => {
+    expAggregate.mockResolvedValue({ _sum: { amount: 50 } }); // owner: 30 cash − 50 exp
+    const rows = await new DashboardService().getSettlementTotals('admin', 'ADMIN');
+    expect(find(rows, 'owner').totalRemainingDues).toBe(0);
   });
 });
