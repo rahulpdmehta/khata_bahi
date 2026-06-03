@@ -2,10 +2,18 @@ import { Response } from 'express';
 import { DashboardService } from './dashboard.service';
 import { ApiResponse } from '../../utils/ApiResponse';
 import { asyncHandler } from '../../middleware/asyncHandler';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { subDays } from 'date-fns';
 import { AuthRequest } from '../../middleware/auth';
 
 const dashboardService = new DashboardService();
+
+// transactionDate/expenseDate are @db.Date (date-only). Build day windows in UTC so the
+// date part stays correct regardless of server timezone (a local-midnight window in IST
+// shifts to the previous day and wrongly pulls in its records).
+const utcStartOfDay = (dt: Date): Date =>
+  new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate(), 0, 0, 0, 0));
+const utcEndOfDay = (dt: Date): Date =>
+  new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate(), 23, 59, 59, 999));
 
 function parseDateRange(query: Record<string, unknown>): { startDate: Date; endDate: Date } {
   const today = new Date();
@@ -13,15 +21,15 @@ function parseDateRange(query: Record<string, unknown>): { startDate: Date; endD
 
   if (query.startDate && query.endDate) {
     return {
-      startDate: startOfDay(new Date(query.startDate as string)),
-      endDate: endOfDay(new Date(query.endDate as string)),
+      startDate: utcStartOfDay(new Date(query.startDate as string)),
+      endDate: utcEndOfDay(new Date(query.endDate as string)),
     };
   }
 
   const d = days ?? 29;
   return {
-    startDate: startOfDay(subDays(today, d)),
-    endDate: endOfDay(today),
+    startDate: utcStartOfDay(subDays(today, d)),
+    endDate: utcEndOfDay(today),
   };
 }
 
