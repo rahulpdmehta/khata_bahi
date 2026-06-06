@@ -136,12 +136,17 @@ export class SettlementService {
   async create(userId: string, role: string, dto: CreateSettlementDto) {
     await assertCenterAccess(userId, role, dto.centerId);
     const settlementDate = new Date(dto.settlementDate);
-    const startOfDay = new Date(settlementDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(settlementDate);
-    endOfDay.setHours(23, 59, 59, 999);
-    const newDay = new Date(settlementDate);
-    newDay.setHours(0, 0, 0, 0);
+    // Use UTC-aware day boundaries (independent of server TZ) so @db.Date queries work correctly.
+    // Date-only strings are parsed as UTC midnight; construct boundaries in UTC, not local TZ.
+    const startOfDay = new Date(
+      Date.UTC(settlementDate.getUTCFullYear(), settlementDate.getUTCMonth(), settlementDate.getUTCDate(), 0, 0, 0, 0)
+    );
+    const endOfDay = new Date(
+      Date.UTC(settlementDate.getUTCFullYear(), settlementDate.getUTCMonth(), settlementDate.getUTCDate(), 23, 59, 59, 999)
+    );
+    const newDay = new Date(
+      Date.UTC(settlementDate.getUTCFullYear(), settlementDate.getUTCMonth(), settlementDate.getUTCDate(), 0, 0, 0, 0)
+    );
 
     // Carry-forward anchors on the last APPROVED settlement only
     const lastApproved = await prisma.settlement.findFirst({
@@ -250,11 +255,16 @@ export class SettlementService {
     await assertCenterAccess(userId, role, centerId);
 
     const endDateObj = new Date(endDate);
-    endDateObj.setHours(0, 0, 0, 0);
+    // UTC-aware boundaries: avoid server TZ reinterpretation via setHours()
+    const endMidnight = new Date(
+      Date.UTC(endDateObj.getUTCFullYear(), endDateObj.getUTCMonth(), endDateObj.getUTCDate(), 0, 0, 0, 0)
+    );
 
     const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    if (endDateObj > today) {
+    const todayEnd = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 23, 59, 59, 999)
+    );
+    if (endMidnight > todayEnd) {
       throw ApiError.badRequest('Cannot create settlements for future dates');
     }
 
@@ -282,9 +292,12 @@ export class SettlementService {
     let initialCarryForward: number;
 
     if (lastApproved) {
-      startDateObj = new Date(lastApproved.settlementDate);
-      startDateObj.setHours(0, 0, 0, 0);
-      startDateObj.setDate(startDateObj.getDate() + 1);
+      // Start from day after the last approved settlement (UTC-aware)
+      const lastDate = lastApproved.settlementDate;
+      const nextDayMs = new Date(
+        Date.UTC(lastDate.getUTCFullYear(), lastDate.getUTCMonth(), lastDate.getUTCDate() + 1, 0, 0, 0, 0)
+      ).getTime();
+      startDateObj = new Date(nextDayMs);
       initialCarryForward = Number(lastApproved.remainingAmount);
     } else {
       const earliest = await prisma.settlement.findFirst({
@@ -292,30 +305,34 @@ export class SettlementService {
         orderBy: { settlementDate: 'asc' },
       });
       if (earliest) {
-        startDateObj = new Date(earliest.settlementDate);
-        startDateObj.setHours(0, 0, 0, 0);
+        // If there are settlements, start from the earliest (UTC-aware)
+        startDateObj = new Date(
+          Date.UTC(earliest.settlementDate.getUTCFullYear(), earliest.settlementDate.getUTCMonth(), earliest.settlementDate.getUTCDate(), 0, 0, 0, 0)
+        );
       } else {
-        startDateObj = new Date(endDateObj);
+        // No settlements: start from endMidnight
+        startDateObj = endMidnight;
       }
       initialCarryForward = 0;
     }
 
-    if (startDateObj > endDateObj) {
+    if (startDateObj > endMidnight) {
       return [];
     }
 
+    // Iterate days using UTC-safe arithmetic
     const days: Date[] = [];
-    const cursor = new Date(startDateObj);
-    while (cursor <= endDateObj) {
-      days.push(new Date(cursor));
-      cursor.setDate(cursor.getDate() + 1);
+    const cursorMs = startDateObj.getTime();
+    const endMs = endMidnight.getTime();
+    for (let ms = cursorMs; ms <= endMs; ms += 86400000) { // 86400000 ms = 1 day
+      days.push(new Date(ms));
     }
 
-    // Build range boundaries for bulk queries
-    const rangeStart = new Date(days[0]);
-    rangeStart.setHours(0, 0, 0, 0);
-    const rangeEnd = new Date(days[days.length - 1]);
-    rangeEnd.setHours(23, 59, 59, 999);
+    // Build range boundaries for bulk queries (UTC-aware)
+    const rangeStart = days[0] || endMidnight;
+    const rangeEnd = new Date(
+      Date.UTC((days[days.length - 1] || endMidnight).getUTCFullYear(), (days[days.length - 1] || endMidnight).getUTCMonth(), (days[days.length - 1] || endMidnight).getUTCDate(), 23, 59, 59, 999)
+    );
 
     // Fetch all data in 3 bulk queries instead of 3×N sequential queries
     const [directCashTx, splitCashPay, expenseRows] = await Promise.all([
