@@ -350,7 +350,8 @@ export const SettlementsPage: React.FC = () => {
                 <TextField
                   fullWidth
                   select
-                  label="Center *"
+                  required
+                  label="Center"
                   value={createForm.centerId}
                   onChange={(e) => {
                     setCreateForm((f) => ({ ...f, centerId: e.target.value }));
@@ -368,7 +369,8 @@ export const SettlementsPage: React.FC = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Settle Up To *"
+                  required
+                  label="Settle Up To"
                   type="date"
                   value={createForm.endDate}
                   onChange={(e) => {
@@ -1027,7 +1029,7 @@ export const SettlementsPage: React.FC = () => {
               <TextField
                 fullWidth
                 required
-                label="Reason for change *"
+                label="Reason for change"
                 value={editRequestReason}
                 onChange={(e) => setEditRequestReason(e.target.value)}
                 multiline

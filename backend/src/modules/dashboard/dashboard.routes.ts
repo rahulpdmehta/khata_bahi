@@ -13,6 +13,7 @@ router.get('/center-performance', dashboardController.getCenterPerformance);
 router.get('/expense-breakdown', dashboardController.getExpenseBreakdown);
 router.get('/settlement-due', dashboardController.getSettlementDue);
 router.get('/payment-mode-breakdown', dashboardController.getPaymentModeBreakdown);
+router.get('/hourly-distribution', dashboardController.getHourlyDistribution);
 router.get('/settlement-totals', dashboardController.getSettlementTotals);
 
 export default router;

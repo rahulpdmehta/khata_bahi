@@ -107,6 +107,19 @@ export class DashboardController {
     res.json(ApiResponse.success(result));
   });
 
+  getHourlyDistribution = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { centerId } = req.query;
+    const { startDate, endDate } = parseDateRange(req.query as Record<string, unknown>);
+    const result = await dashboardService.getHourlyDistribution(
+      req.user!.userId,
+      req.user!.role,
+      startDate,
+      endDate,
+      centerId as string | undefined
+    );
+    res.json(ApiResponse.success(result));
+  });
+
   getSettlementTotals = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { centerId } = req.query;
     const result = await dashboardService.getSettlementTotals(

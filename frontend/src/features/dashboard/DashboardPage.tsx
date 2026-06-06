@@ -55,6 +55,8 @@ import {
   Legend,
   LineChart,
   Line,
+  BarChart,
+  Bar,
 } from 'recharts';
 import { format } from 'date-fns';
 import type { Center } from '../../types';
@@ -351,6 +353,7 @@ export const DashboardPage: React.FC = () => {
   const [centerPerf, setCenterPerf] = useState<CenterPerformance[]>([]);
   const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseBreakdown[]>([]);
   const [paymentModeData, setPaymentModeData] = useState<{ paymentMode: string; totalAmount: number; count: number }[]>([]);
+  const [hourly, setHourly] = useState<{ label: string; count: number; totalAmount: number }[]>([]);
   const [recentTx, setRecentTx] = useState<Record<string, unknown>[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -384,11 +387,12 @@ export const DashboardPage: React.FC = () => {
     const { startDate, endDate, days } = presetToDates(datePreset, customFrom, customTo);
     const centerParam = centerId ? { centerId } : {};
     try {
-        const [trendRes, perfRes, breakdownRes, paymentRes, txRes, editRes] = await Promise.allSettled([
+        const [trendRes, perfRes, breakdownRes, paymentRes, hourlyRes, txRes, editRes] = await Promise.allSettled([
           apiClient.get('/dashboard/income-vs-expense-trend', { params: { startDate, endDate, days, ...centerParam } }),
           apiClient.get('/dashboard/center-performance', { params: { startDate, endDate, days } }),
           apiClient.get('/dashboard/expense-breakdown', { params: { startDate, endDate, days, ...centerParam } }),
           apiClient.get('/dashboard/payment-mode-breakdown', { params: { startDate, endDate, days, ...centerParam } }),
+          apiClient.get('/dashboard/hourly-distribution', { params: { startDate, endDate, days, ...centerParam } }),
           apiClient.get('/transactions', { params: { limit: 5, page: 1, ...centerParam } }),
           apiClient.get('/edit-requests', { params: { limit: 1, status: 'PENDING' } }),
         ]);
@@ -426,6 +430,11 @@ export const DashboardPage: React.FC = () => {
         if (paymentRes.status === 'fulfilled') {
           const d = paymentRes.value.data?.data || paymentRes.value.data;
           setPaymentModeData(Array.isArray(d) ? d : []);
+        }
+
+        if (hourlyRes.status === 'fulfilled') {
+          const d = hourlyRes.value.data?.data || hourlyRes.value.data;
+          setHourly(Array.isArray(d) ? d : []);
         }
 
         if (txRes.status === 'fulfilled') {
@@ -774,6 +783,48 @@ export const DashboardPage: React.FC = () => {
                       />
                       <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '0.7rem' }} />
                     </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* ── Transaction Rush by 3-hour slot ── */}
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12}>
+          <Card sx={{ borderRadius: '14px' }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#0f172a', mb: 0.25 }}>
+                Transaction Rush — by 3-hour slot
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#475569', fontWeight: 500, fontSize: '0.75rem' }}>
+                Transactions per time slot — {periodLabel.toLowerCase()}
+              </Typography>
+              <Box sx={{ mt: 1.5 }}>
+                {loading ? (
+                  <Skeleton variant="rectangular" height={240} sx={{ borderRadius: 2 }} />
+                ) : hourly.every((h) => h.count === 0) ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 240 }}>
+                    <Typography variant="body2" color="text.secondary">No transactions in this period</Typography>
+                  </Box>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={hourly} margin={{ top: 8, right: 8, bottom: 5, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <RechartsTooltip
+                        cursor={{ fill: 'rgba(0,6,102,0.04)' }}
+                        contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', fontSize: 12 }}
+                        formatter={(value, _name, item) => [
+                          `${value} txns · ${formatCurrency(Number(item?.payload?.totalAmount ?? 0))}`,
+                          'Rush',
+                        ]}
+                      />
+                      <Bar dataKey="count" fill="#000666" radius={[6, 6, 0, 0]} maxBarSize={52} />
+                    </BarChart>
                   </ResponsiveContainer>
                 )}
               </Box>

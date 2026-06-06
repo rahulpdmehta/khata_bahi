@@ -5,6 +5,8 @@ import type { IncomeSource, VehicleType, ApiResponse } from '../../types';
 interface MasterDataState {
   incomeSources: IncomeSource[];
   vehicleTypes: VehicleType[];
+  incomeSourcesLoaded: boolean;
+  vehicleTypesLoaded: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -12,13 +14,17 @@ interface MasterDataState {
 const initialState: MasterDataState = {
   incomeSources: [],
   vehicleTypes: [],
+  incomeSourcesLoaded: false,
+  vehicleTypesLoaded: false,
   loading: false,
   error: null,
 };
 
-export const fetchIncomeSources = createAsyncThunk(
+// Master data is effectively static — cache it. Skips the call once loaded;
+// pass { force: true } to refetch.
+export const fetchIncomeSources = createAsyncThunk<IncomeSource[], { force?: boolean } | void>(
   'masterData/fetchIncomeSources',
-  async (_, { rejectWithValue }) => {
+  async (_arg, { rejectWithValue }) => {
     try {
       const response = await apiClient.get<ApiResponse<IncomeSource[]>>('/master-data/income-sources');
       return response.data.data!;
@@ -26,12 +32,19 @@ export const fetchIncomeSources = createAsyncThunk(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return rejectWithValue((error as any).response?.data?.message || 'Failed to fetch income sources');
     }
+  },
+  {
+    condition: (arg, { getState }) => {
+      const s = (getState() as { masterData: MasterDataState }).masterData;
+      if (s.incomeSourcesLoaded && !(arg && arg.force)) return false;
+      return true;
+    },
   }
 );
 
-export const fetchVehicleTypes = createAsyncThunk(
+export const fetchVehicleTypes = createAsyncThunk<VehicleType[], { force?: boolean } | void>(
   'masterData/fetchVehicleTypes',
-  async (_, { rejectWithValue }) => {
+  async (_arg, { rejectWithValue }) => {
     try {
       const response = await apiClient.get<ApiResponse<VehicleType[]>>('/master-data/vehicle-types');
       return response.data.data!;
@@ -39,6 +52,13 @@ export const fetchVehicleTypes = createAsyncThunk(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return rejectWithValue((error as any).response?.data?.message || 'Failed to fetch vehicle types');
     }
+  },
+  {
+    condition: (arg, { getState }) => {
+      const s = (getState() as { masterData: MasterDataState }).masterData;
+      if (s.vehicleTypesLoaded && !(arg && arg.force)) return false;
+      return true;
+    },
   }
 );
 
@@ -58,6 +78,7 @@ const masterDataSlice = createSlice({
       })
       .addCase(fetchIncomeSources.fulfilled, (state, action: PayloadAction<IncomeSource[]>) => {
         state.loading = false;
+        state.incomeSourcesLoaded = true;
         state.incomeSources = action.payload;
       })
       .addCase(fetchIncomeSources.rejected, (state, action) => {
@@ -70,6 +91,7 @@ const masterDataSlice = createSlice({
       })
       .addCase(fetchVehicleTypes.fulfilled, (state, action: PayloadAction<VehicleType[]>) => {
         state.loading = false;
+        state.vehicleTypesLoaded = true;
         state.vehicleTypes = action.payload;
       })
       .addCase(fetchVehicleTypes.rejected, (state, action) => {

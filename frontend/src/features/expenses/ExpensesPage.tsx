@@ -154,10 +154,15 @@ export const ExpensesPage: React.FC = () => {
       setSnack({ open: true, msg: 'Please fill all required fields.', severity: 'error' });
       return;
     }
+    const amt = parseFloat(form.amount);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setSnack({ open: true, msg: 'Amount must be greater than ₹0.', severity: 'error' });
+      return;
+    }
     setSubmitting(true);
     try {
       await dispatch(
-        createExpense({ ...form, amount: parseFloat(form.amount) })
+        createExpense({ ...form, amount: amt })
       ).unwrap();
       setSnack({ open: true, msg: 'Expense added successfully!', severity: 'success' });
       setForm({
@@ -256,7 +261,8 @@ export const ExpensesPage: React.FC = () => {
                   <TextField
                     fullWidth
                     select
-                    label="Center *"
+                    required
+                    label="Center"
                     name="centerId"
                     value={form.centerId}
                     onChange={handleChange}
@@ -272,7 +278,8 @@ export const ExpensesPage: React.FC = () => {
                   <TextField
                     fullWidth
                     select
-                    label="Category *"
+                    required
+                    label="Category"
                     name="categoryId"
                     value={form.categoryId}
                     onChange={handleChange}
@@ -288,7 +295,8 @@ export const ExpensesPage: React.FC = () => {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Amount *"
+                    required
+                    label="Amount"
                     name="amount"
                     type="number"
                     value={form.amount}
@@ -303,7 +311,8 @@ export const ExpensesPage: React.FC = () => {
                   <TextField
                     fullWidth
                     select
-                    label="Payment Mode *"
+                    required
+                    label="Payment Mode"
                     name="paymentMode"
                     value={form.paymentMode}
                     onChange={handleChange}
@@ -327,7 +336,8 @@ export const ExpensesPage: React.FC = () => {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Expense Date *"
+                    required
+                    label="Expense Date"
                     name="expenseDate"
                     type="date"
                     value={form.expenseDate}
@@ -545,7 +555,8 @@ export const ExpensesPage: React.FC = () => {
               </Typography>
               <TextField
                 fullWidth
-                label="Rejection Reason *"
+                required
+                label="Rejection Reason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 multiline
@@ -661,7 +672,7 @@ export const ExpensesPage: React.FC = () => {
               <TextField
                 fullWidth
                 required
-                label="Reason for change *"
+                label="Reason for change"
                 value={editRequestReason}
                 onChange={(e) => setEditRequestReason(e.target.value)}
                 multiline

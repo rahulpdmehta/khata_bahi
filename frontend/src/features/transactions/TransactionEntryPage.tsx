@@ -23,11 +23,12 @@ import {
   Payments as PaymentsIcon,
   CallSplit as SplitIcon,
 } from '@mui/icons-material';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { createTransaction } from './transactionSlice';
 import { fetchIncomeSources, fetchVehicleTypes } from '../masterData/masterDataSlice';
 import { fetchCenters } from '../admin/centerSlice';
+import { apiClient } from '../../utils/apiClient';
 import { PAYMENT_MODES, type PaymentModeValue } from '../../utils/paymentModes';
 
 interface SplitEntry {
@@ -99,7 +100,10 @@ export const TransactionEntryPage: React.FC = () => {
   const [splitEntries, setSplitEntries] = useState<SplitEntry[]>([{ paymentMode: 'CASH', amount: '' }]);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ customerName?: string; customerMobile?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ customerName?: string; customerMobile?: string; transactionDate?: string }>({});
+  // Last non-rejected settlement date for the selected center (yyyy-MM-dd).
+  // Transactions on or before this date are blocked (the day is settled/locked).
+  const [lastSettledDate, setLastSettledDate] = useState<string | null>(null);
 
   const totalAmount = parseFloat(form.amount) || 0;
   const splitTotal = splitEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
@@ -118,8 +122,50 @@ export const TransactionEntryPage: React.FC = () => {
     }
   }, [availableCenters]);
 
+  // Fetch the selected center's latest non-rejected settlement date so we can
+  // block transactions on/before it (a settled day is locked server-side too).
+  useEffect(() => {
+    if (!form.centerId) {
+      setLastSettledDate(null);
+      return;
+    }
+    let cancelled = false;
+    apiClient
+      .get('/settlements', {
+        params: { centerId: form.centerId, sortBy: 'settlementDate', sortOrder: 'desc', limit: 10, page: 1, flat: true },
+      })
+      .then((res) => {
+        if (cancelled) return;
+        const list = res.data?.data?.data ?? res.data?.data ?? [];
+        const latest = (Array.isArray(list) ? list : []).find(
+          (s: { status?: string }) => s.status !== 'REJECTED'
+        ) as { settlementDate?: string } | undefined;
+        setLastSettledDate(latest?.settlementDate ? String(latest.settlementDate).slice(0, 10) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setLastSettledDate(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.centerId]);
+
+  const minTxnDate = lastSettledDate
+    ? format(addDays(new Date(`${lastSettledDate}T00:00:00`), 1), 'yyyy-MM-dd')
+    : undefined;
+
+  // If the chosen date is now locked (e.g. after switching center), advance it.
+  useEffect(() => {
+    if (lastSettledDate && minTxnDate && form.transactionDate <= lastSettledDate) {
+      setForm((prev) => ({ ...prev, transactionDate: minTxnDate }));
+    }
+  }, [lastSettledDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (fieldErrors[name as keyof typeof fieldErrors]) {
+      setFieldErrors((f) => ({ ...f, [name]: undefined }));
+    }
     setForm((prev) => {
       const updated = { ...prev, [name]: value };
       if (name === 'vehicleTypeId') {
@@ -186,8 +232,24 @@ export const TransactionEntryPage: React.FC = () => {
       setError('Please fill all required fields.');
       return;
     }
+    const amountNum = parseFloat(form.amount);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      setError('Amount must be greater than ₹0.');
+      return;
+    }
+    const vehicleNumber = form.vehicleNumber.replace(/\s/g, '').toUpperCase();
+    if (!/^[A-Z0-9]{5,12}$/.test(vehicleNumber) || !/[A-Z]/.test(vehicleNumber) || !/[0-9]/.test(vehicleNumber)) {
+      setError('Enter a valid vehicle number (letters + digits, e.g. DL01AB1234).');
+      return;
+    }
     if (isSplit && Math.abs(splitRemaining) > 0.01) {
       setError(`Split amounts must add up to ₹${totalAmount}. Remaining: ₹${splitRemaining.toFixed(2)}`);
+      return;
+    }
+    // Block dates on/before the last settlement — that day is settled/locked.
+    if (lastSettledDate && form.transactionDate <= lastSettledDate) {
+      setFieldErrors({ transactionDate: `On/before the last settled date (${lastSettledDate}). Choose a later date.` });
+      setError('This day is already settled — pick a date after the last settlement.');
       return;
     }
     // Customer name & mobile are mandatory and must be valid.
@@ -211,10 +273,10 @@ export const TransactionEntryPage: React.FC = () => {
       }));
       await dispatch(
         createTransaction({
-          vehicleNumber: form.vehicleNumber,
+          vehicleNumber,
           vehicleTypeId: form.vehicleTypeId,
           incomeSourceId: form.incomeSourceId,
-          amount: parseFloat(form.amount),
+          amount: amountNum,
           centerId: form.centerId,
           transactionDate: form.transactionDate,
           paymentMode: isSplit ? 'SPLIT' : splitEntries[0].paymentMode,
@@ -279,7 +341,8 @@ export const TransactionEntryPage: React.FC = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Vehicle Number *"
+                  required
+                  label="Vehicle Number"
                   name="vehicleNumber"
                   value={form.vehicleNumber}
                   onChange={handleChange}
@@ -293,7 +356,8 @@ export const TransactionEntryPage: React.FC = () => {
                 <TextField
                   fullWidth
                   select
-                  label="Vehicle Type *"
+                  required
+                  label="Vehicle Type"
                   name="vehicleTypeId"
                   value={form.vehicleTypeId}
                   onChange={handleChange}
@@ -316,7 +380,8 @@ export const TransactionEntryPage: React.FC = () => {
                 <TextField
                   fullWidth
                   select
-                  label="Income Source *"
+                  required
+                  label="Income Source"
                   name="incomeSourceId"
                   value={form.incomeSourceId}
                   onChange={handleChange}
@@ -334,7 +399,8 @@ export const TransactionEntryPage: React.FC = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Amount *"
+                  required
+                  label="Amount"
                   name="amount"
                   type="number"
                   value={form.amount}
@@ -350,7 +416,8 @@ export const TransactionEntryPage: React.FC = () => {
                 <TextField
                   fullWidth
                   select
-                  label="Center *"
+                  required
+                  label="Center"
                   name="centerId"
                   value={form.centerId}
                   onChange={handleChange}
@@ -366,12 +433,19 @@ export const TransactionEntryPage: React.FC = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Transaction Date *"
+                  required
+                  label="Transaction Date"
                   name="transactionDate"
                   type="date"
                   value={form.transactionDate}
                   onChange={handleChange}
                   InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: minTxnDate, max: format(new Date(), 'yyyy-MM-dd') }}
+                  error={!!fieldErrors.transactionDate}
+                  helperText={
+                    fieldErrors.transactionDate ||
+                    (lastSettledDate ? `Settled up to ${lastSettledDate} — pick a later date` : ' ')
+                  }
                 />
               </Grid>
             </Grid>

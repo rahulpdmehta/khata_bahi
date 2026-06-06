@@ -1,3 +1,4 @@
+import './config/timezone'; // must be first — sets TZ before any date logic loads
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

@@ -432,7 +432,7 @@ export const TransactionListPage: React.FC = () => {
               <TextField fullWidth label="Notes" value={editRequestFields.notes} onChange={(e) => setEditRequestFields((f) => ({ ...f, notes: e.target.value }))} multiline rows={2} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth required label="Reason for change *" value={editRequestReason} onChange={(e) => setEditRequestReason(e.target.value)} multiline rows={2} placeholder="Explain why these changes are needed..." />
+              <TextField fullWidth required label="Reason for change" value={editRequestReason} onChange={(e) => setEditRequestReason(e.target.value)} multiline rows={2} placeholder="Explain why these changes are needed..." />
             </Grid>
           </Grid>
         </DialogContent>

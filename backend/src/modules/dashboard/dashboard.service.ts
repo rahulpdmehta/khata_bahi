@@ -269,6 +269,38 @@ export class DashboardService {
     }));
   }
 
+  // Transaction "rush" grouped into eight 3-hour slots, by transactionTime.
+  // transactionTime is @db.Time(0): Prisma returns it as a 1970-01-01 Date with
+  // the stored wall-clock time in UTC, so getUTCHours() yields the stored hour.
+  async getHourlyDistribution(
+    userId: string,
+    role: string,
+    startDate: Date,
+    endDate: Date,
+    centerId?: string
+  ) {
+    const centerFilter = await this.centerScope(userId, role, centerId);
+    const rows = await prisma.transaction.findMany({
+      where: { ...centerFilter, transactionDate: { gte: startDate, lte: endDate } },
+      select: { transactionTime: true, amount: true },
+    });
+
+    const SLOT_LABELS = [
+      '12–3 AM', '3–6 AM', '6–9 AM', '9 AM–12 PM',
+      '12–3 PM', '3–6 PM', '6–9 PM', '9 PM–12 AM',
+    ];
+    const slots = SLOT_LABELS.map((label, slot) => ({ slot, label, count: 0, totalAmount: 0 }));
+
+    for (const r of rows) {
+      const hour = new Date(r.transactionTime).getUTCHours();
+      const idx = Math.min(7, Math.floor(hour / 3));
+      slots[idx].count += 1;
+      slots[idx].totalAmount += Number(r.amount ?? 0);
+    }
+
+    return slots;
+  }
+
   async getSettlementDue(
     userId: string,
     role: string,

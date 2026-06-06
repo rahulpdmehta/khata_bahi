@@ -254,7 +254,8 @@ export const CenterManagementPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Center Code *"
+                required
+                label="Center Code"
                 name="centerCode"
                 value={form.centerCode}
                 onChange={handleFormChange}
@@ -267,7 +268,8 @@ export const CenterManagementPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Center Name *"
+                required
+                label="Center Name"
                 name="centerName"
                 value={form.centerName}
                 onChange={handleFormChange}

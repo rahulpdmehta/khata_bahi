@@ -5,18 +5,23 @@ import type { Center, ApiResponse } from '../../types';
 interface CenterState {
   centers: Center[];
   loading: boolean;
+  loaded: boolean;
   error: string | null;
 }
 
 const initialState: CenterState = {
   centers: [],
   loading: false,
+  loaded: false,
   error: null,
 };
 
-export const fetchCenters = createAsyncThunk(
+// Centers change rarely — cache them. Skips the network call if already loaded
+// (and not in-flight); pass { force: true } to refetch. Create/update/delete
+// keep the cache fresh via their reducers below.
+export const fetchCenters = createAsyncThunk<Center[], { force?: boolean } | void>(
   'centers/fetchCenters',
-  async (_, { rejectWithValue }) => {
+  async (_arg, { rejectWithValue }) => {
     try {
       const response = await apiClient.get('/admin/centers');
       const payload = response.data?.data;
@@ -25,6 +30,14 @@ export const fetchCenters = createAsyncThunk(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return rejectWithValue((error as any).response?.data?.message || 'Failed to fetch centers');
     }
+  },
+  {
+    condition: (arg, { getState }) => {
+      const s = (getState() as { centers: CenterState }).centers;
+      if (s.loading) return false;
+      if (s.loaded && !(arg && arg.force)) return false;
+      return true;
+    },
   }
 );
 
@@ -83,6 +96,7 @@ const centerSlice = createSlice({
       })
       .addCase(fetchCenters.fulfilled, (state, action: PayloadAction<Center[]>) => {
         state.loading = false;
+        state.loaded = true;
         state.centers = action.payload;
       })
       .addCase(fetchCenters.rejected, (state, action) => {

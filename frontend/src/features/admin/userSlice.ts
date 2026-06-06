@@ -5,18 +5,22 @@ import type { User, ApiResponse } from '../../types';
 interface UserState {
   users: User[];
   loading: boolean;
+  loaded: boolean;
   error: string | null;
 }
 
 const initialState: UserState = {
   users: [],
   loading: false,
+  loaded: false,
   error: null,
 };
 
-export const fetchUsers = createAsyncThunk(
+// Cached: skips the call if users are already loaded (and not in-flight).
+// Pass { force: true } to refetch; create/update/delete keep the cache fresh.
+export const fetchUsers = createAsyncThunk<User[], { force?: boolean } | void>(
   'users/fetchUsers',
-  async (_, { rejectWithValue }) => {
+  async (_arg, { rejectWithValue }) => {
     try {
       const response = await apiClient.get('/admin/users');
       const payload = response.data?.data;
@@ -25,6 +29,14 @@ export const fetchUsers = createAsyncThunk(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return rejectWithValue((error as any).response?.data?.message || 'Failed to fetch users');
     }
+  },
+  {
+    condition: (arg, { getState }) => {
+      const s = (getState() as { users: UserState }).users;
+      if (s.loading) return false;
+      if (s.loaded && !(arg && arg.force)) return false;
+      return true;
+    },
   }
 );
 
@@ -83,6 +95,7 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
         state.loading = false;
+        state.loaded = true;
         state.users = action.payload;
       })
       .addCase(fetchUsers.rejected, (state, action) => {

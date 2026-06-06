@@ -327,7 +327,8 @@ export const UserManagementPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Username *"
+                required
+                label="Username"
                 name="username"
                 value={form.username}
                 onChange={handleFormChange}
@@ -337,7 +338,8 @@ export const UserManagementPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Email *"
+                required
+                label="Email"
                 name="email"
                 type="email"
                 value={form.email}
@@ -406,7 +408,8 @@ export const UserManagementPage: React.FC = () => {
               <TextField
                 fullWidth
                 select
-                label="Role *"
+                required
+                label="Role"
                 name="role"
                 value={form.role}
                 onChange={handleFormChange}
