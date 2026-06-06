@@ -171,19 +171,25 @@ export class SettlementService {
     }
 
     // Determine the window start (first settleable / re-settleable date)
+    // Use UTC arithmetic to match newDay computation above
     let windowStartDate: Date | null;
     if (lastApproved) {
-      windowStartDate = new Date(lastApproved.settlementDate);
-      windowStartDate.setHours(0, 0, 0, 0);
-      windowStartDate.setDate(windowStartDate.getDate() + 1);
+      // Start from day after lastApproved (UTC-aware)
+      const date = lastApproved.settlementDate;
+      windowStartDate = new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 0, 0, 0, 0)
+      );
     } else {
       const earliest = await prisma.settlement.findFirst({
         where: { centerId: dto.centerId },
         orderBy: { settlementDate: 'asc' },
       });
       if (earliest) {
-        windowStartDate = new Date(earliest.settlementDate);
-        windowStartDate.setHours(0, 0, 0, 0);
+        // Use earliest date (UTC-aware)
+        const date = earliest.settlementDate;
+        windowStartDate = new Date(
+          Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0)
+        );
       } else {
         windowStartDate = null;
       }
